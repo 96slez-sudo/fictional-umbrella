@@ -547,20 +547,24 @@
 
     <script>
         // ============================================
-        // НАСТРОЙКА SUPABASE
+        // НАСТРОЙКА SUPABASE (ТОЛЬКО ОДИН РАЗ!)
         // ============================================
-        const SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
+        var SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
+        var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Проверяем, не создан ли уже клиент
+        if (typeof window.supabaseClient === 'undefined') {
+            window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+        var supabase = window.supabaseClient;
 
         // ============================================
         // ПЕРЕМЕННЫЕ
         // ============================================
-        let boxRowCount = 3;
+        var boxRowCount = 3;
 
-        const PACKAGE_MAP = { 'A6': 'A6_BAG', 'A5': 'A5_BAG', 'A7': 'A7_KFC', 'other': null };
-        const PACKAGE_NAMES = {
+        var PACKAGE_MAP = { 'A6': 'A6_BAG', 'A5': 'A5_BAG', 'A7': 'A7_KFC', 'other': null };
+        var PACKAGE_NAMES = {
             'A6_BAG': 'Пакет для стикерпака А6 без логов 110*150*60',
             'A5_BAG': 'Пакет для стикерпака А5 155*210*30',
             'A7_KFC': 'А7 KFC 80*105*40',
@@ -568,7 +572,7 @@
             'BAG_70x100': 'Пакет 70*100',
             'BAG_60x40x30': 'Пакет 60*40*30'
         };
-        const BOX_NAMES = {
+        var BOX_NAMES = {
             'MB_SMALL': 'Малый MB',
             'AMAZON': 'Амазон',
             'OZON': 'Ozon хороший',
@@ -674,22 +678,23 @@
         // ============================================
         // ПРОВЕРКА ПОДКЛЮЧЕНИЯ
         // ============================================
-        async function checkConnection() {
+        function checkConnection() {
             var statusEl = document.getElementById('connectionStatus');
             var bar = document.getElementById('statusBar');
 
-            try {
-                var result = await supabase.from('materials').select('count').limit(1);
-                if (result.error) throw result.error;
-                statusEl.innerHTML = '✅ Подключено';
-                bar.className = 'status-bar';
-                console.log('✅ Подключение к Supabase успешно');
-            } catch (error) {
-                console.error('❌ Ошибка подключения:', error);
-                statusEl.innerHTML = '❌ Ошибка';
-                bar.className = 'status-bar error';
-                showToast('❌ Не удалось подключиться к базе данных', 'error');
-            }
+            supabase.from('materials').select('count').limit(1)
+                .then(function(result) {
+                    if (result.error) throw result.error;
+                    statusEl.innerHTML = '✅ Подключено';
+                    bar.className = 'status-bar';
+                    console.log('✅ Подключение к Supabase успешно');
+                })
+                .catch(function(error) {
+                    console.error('❌ Ошибка подключения:', error);
+                    statusEl.innerHTML = '❌ Ошибка';
+                    bar.className = 'status-bar error';
+                    showToast('❌ Не удалось подключиться к базе данных', 'error');
+                });
         }
 
         // ============================================
@@ -702,19 +707,18 @@
             var div = document.createElement('div');
             div.className = 'box-item';
             div.id = 'boxRow' + boxRowCount;
-            div.innerHTML = `
-                    <label>📦</label>
-                    <select class="box-type" id="boxType${boxRowCount}">
-                        <option value="MB_SMALL">Малый MB</option>
-                        <option value="AMAZON">Амазон</option>
-                        <option value="OZON">Ozon хороший</option>
-                        <option value="STAND_BOX">Для стоек</option>
-                        <option value="BOY_BIG">Пацанские большие</option>
-                    </select>
-                    <input type="number" class="box-qty" id="boxQty${boxRowCount}" min="0" step="1" value="0">
-                    <span style="font-size:12px;color:#888;">шт</span>
-                    <button type="button" class="btn btn-danger" onclick="removeBoxRow(${boxRowCount})">✕</button>
-                `;
+            div.innerHTML =
+                '<label>📦</label>' +
+                '<select class="box-type" id="boxType' + boxRowCount + '">' +
+                '<option value="MB_SMALL">Малый MB</option>' +
+                '<option value="AMAZON">Амазон</option>' +
+                '<option value="OZON">Ozon хороший</option>' +
+                '<option value="STAND_BOX">Для стоек</option>' +
+                '<option value="BOY_BIG">Пацанские большие</option>' +
+                '</select>' +
+                '<input type="number" class="box-qty" id="boxQty' + boxRowCount + '" min="0" step="1" value="0">' +
+                '<span style="font-size:12px;color:#888;">шт</span>' +
+                '<button type="button" class="btn btn-danger" onclick="removeBoxRow(' + boxRowCount + ')">✕</button>';
             grid.appendChild(div);
 
             var typeEl = div.querySelector('.box-type');
@@ -835,8 +839,8 @@
 
             var packageName = calc.package.name || '—';
             document.getElementById('previewPackageLabel').textContent = packageName;
-            document.getElementById('previewPackage').textContent = calc.package.quantity > 0 ? calc.package.quantity +
-                ' шт (' + formatLabel + ')' : '—';
+            document.getElementById('previewPackage').textContent = calc.package.quantity > 0 ? calc.package
+                .quantity + ' шт (' + formatLabel + ')' : '—';
 
             document.getElementById('previewCaps').textContent = calc.caps > 0 ? calc.caps + ' шт' : '—';
             document.getElementById('previewNonFormal').textContent = calc.nonFormal > 0 ? calc.nonFormal + ' шт' : '—';
@@ -864,7 +868,7 @@
         // ============================================
         // ОТПРАВКА ЗАКАЗА
         // ============================================
-        async function submitOrder(event) {
+        function submitOrder(event) {
             event.preventDefault();
             var submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
@@ -920,16 +924,24 @@
 
                 console.log('📦 Отправка заказа:', orderData);
 
-                var result = await supabase.from('orders').insert([orderData]).select();
-                if (result.error) throw result.error;
-
-                showToast('✅ Заказ ' + orderData.order_number + ' успешно отгружен!', 'success');
-                console.log('✅ Заказ сохранен:', result.data);
+                supabase.from('orders').insert([orderData]).select()
+                    .then(function(result) {
+                        if (result.error) throw result.error;
+                        showToast('✅ Заказ ' + orderData.order_number + ' успешно отгружен!', 'success');
+                        console.log('✅ Заказ сохранен:', result.data);
+                    })
+                    .catch(function(error) {
+                        console.error('❌ Ошибка:', error);
+                        showToast('❌ Ошибка: ' + error.message, 'error');
+                    })
+                    .finally(function() {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '✅ Отгрузить';
+                    });
 
             } catch (error) {
                 console.error('❌ Ошибка:', error);
                 showToast('❌ Ошибка: ' + error.message, 'error');
-            } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = '✅ Отгрузить';
             }
