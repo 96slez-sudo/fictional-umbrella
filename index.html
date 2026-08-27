@@ -1,118 +1,1210 @@
--- Добавляем колонку для кода пакета
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS package_code VARCHAR(50);
-
--- Обновляем триггер для использования package_code
-CREATE OR REPLACE FUNCTION process_order_materials()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Списываем основной материал (если есть пакет)
-    IF NEW.package_code IS NOT NULL AND NEW.material_quantity > 0 THEN
-        PERFORM create_movement(
-            NEW.package_code,
-            NEW.order_date,
-            'EXPENSE',
-            NEW.material_quantity,
-            'Пакет для заказа ' || NEW.order_number
-        );
-    END IF;
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Отгрузка заказа</title>
     
-    -- Списываем сам материал
-    IF NEW.material_quantity > 0 THEN
-        PERFORM create_movement(
-            NEW.material_type,
-            NEW.order_date,
-            'EXPENSE',
-            NEW.material_quantity,
-            'Материал для заказа ' || NEW.order_number
-        );
-    END IF;
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    -- Шапки
-    IF NEW.has_caps AND NEW.material_quantity > 0 THEN
-        PERFORM create_movement(
-            'NALEPKING',
-            NEW.order_date,
-            'EXPENSE',
-            NEW.material_quantity,
-            'Шапки для заказа ' || NEW.order_number
-        );
-    END IF;
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        .container {
+            max-width: 950px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 6px;
+        }
+        
+        label .required {
+            color: #e74c3c;
+            margin-left: 4px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            background: white;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4a90d9;
+        }
+        
+        input[type="number"] {
+            width: 120px;
+        }
+        
+        .section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-title::before {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #ddd;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 4px 0;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        
+        .checkbox-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #4a90d9;
+        }
+        
+        .special-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .special-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 14px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e8e8e8;
+            transition: border-color 0.2s;
+        }
+        
+        .special-item.active {
+            border-color: #4a90d9;
+            background: #f0f7ff;
+        }
+        
+        .special-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #4a90d9;
+        }
+        
+        .special-item input[type="number"] {
+            width: 80px;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .special-item input[type="number"]:disabled {
+            opacity: 0.5;
+            background: #f5f5f5;
+        }
+        
+        .special-item label {
+            margin: 0;
+            font-weight: 500;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        
+        .boxes-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        
+        .box-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e8e8e8;
+        }
+        
+        .box-item select {
+            flex: 1;
+            min-width: 100px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .box-item input[type="number"] {
+            width: 70px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .box-item label {
+            margin: 0;
+            font-weight: 500;
+            font-size: 13px;
+            white-space: nowrap;
+            min-width: 30px;
+        }
+        
+        .calculation-preview {
+            background: #1a1a2e;
+            color: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .calculation-preview .calc-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        
+        .calculation-preview .calc-row:last-child {
+            border-bottom: none;
+        }
+        
+        .calculation-preview .calc-label {
+            color: #aaa;
+        }
+        
+        .calculation-preview .calc-value {
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+        
+        .calculation-preview .calc-total {
+            border-top: 2px solid #4fc3f7;
+            margin-top: 6px;
+            padding-top: 6px;
+            font-size: 16px;
+        }
+        
+        .calculation-preview .calc-total .calc-value {
+            color: #81c784;
+            font-size: 18px;
+        }
+        
+        .calculation-preview .calc-section {
+            color: #666;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 6px;
+            padding-top: 4px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #4a90d9;
+            color: white;
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .btn-primary:hover {
+            background: #357abd;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(74, 144, 217, 0.3);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #e8e8e8;
+            color: #555;
+        }
+        
+        .btn-secondary:hover {
+            background: #ddd;
+        }
+        
+        .btn-success {
+            background: #43a047;
+            color: white;
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .btn-success:hover {
+            background: #388e3c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3);
+        }
+        
+        .btn-danger {
+            background: #e53935;
+            color: white;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-danger:hover {
+            background: #c62828;
+        }
+        
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            max-width: 400px;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.success {
+            background: #43a047;
+        }
+        
+        .toast.error {
+            background: #e53935;
+        }
+        
+        .toast.info {
+            background: #4a90d9;
+        }
+        
+        .status-bar {
+            background: #e8f5e9;
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: #2e7d32;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-bar .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #43a047;
+            margin-right: 8px;
+        }
+        
+        .status-bar.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .status-bar.error .status-dot {
+            background: #e53935;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .badge-blue {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        
+        .badge-green {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .badge-orange {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        
+        .format-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .format-selector .format-btn {
+            padding: 6px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .format-selector .format-btn:hover {
+            border-color: #4a90d9;
+            background: #f0f7ff;
+        }
+        
+        .format-selector .format-btn.active {
+            border-color: #4a90d9;
+            background: #4a90d9;
+            color: white;
+        }
+        
+        .format-selector .format-btn input {
+            display: none;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .special-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .boxes-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Отгрузка заказа</h1>
+        
+        <div class="status-bar" id="statusBar">
+            <span>
+                <span class="status-dot"></span>
+                Подключение к базе данных...
+            </span>
+            <span id="connectionStatus">⏳ Проверка...</span>
+        </div>
+        
+        <form id="orderForm">
+            <!-- Номер и дата -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Номер заказа <span class="required">*</span></label>
+                    <input type="text" id="orderNumber" placeholder="Например: ORD-2026-08-27" required>
+                </div>
+                <div class="form-group">
+                    <label>Дата</label>
+                    <input type="date" id="orderDate" disabled style="background:#f5f5f5;color:#333;">
+                </div>
+            </div>
+            
+            <!-- Основной материал -->
+            <div class="section">
+                <div class="section-title">📄 Основной материал</div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Тип материала <span class="required">*</span></label>
+                        <select id="materialType" required>
+                            <option value="smola">Смола</option>
+                            <option value="vinil">Винил</option>
+                            <option value="other">Другое</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Количество (шт) <span class="required">*</span></label>
+                        <input type="number" id="materialQuantity" min="0" step="1" value="1" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Формат <span class="required">*</span></label>
+                    <div class="format-selector" id="formatSelector">
+                        <label class="format-btn active">
+                            <input type="radio" name="format" value="A6" checked>
+                            А6
+                        </label>
+                        <label class="format-btn">
+                            <input type="radio" name="format" value="A5">
+                            А5
+                        </label>
+                        <label class="format-btn">
+                            <input type="radio" name="format" value="A7">
+                            А7
+                        </label>
+                        <label class="format-btn">
+                            <input type="radio" name="format" value="other">
+                            Иной
+                        </label>
+                    </div>
+                    <div id="otherFormatGroup" style="display:none; margin-top:10px;">
+                        <select id="otherFormatSelect">
+                            <option value="BAG_60x80">Пакет 60*80</option>
+                            <option value="BAG_70x100">Пакет 70*100</option>
+                            <option value="BAG_60x40x30">Пакет 60*40*30</option>
+                        </select>
+                        <span style="font-size:12px;color:#888;margin-left:8px;">выберите пакет для иного формата</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Шапки, Неформалки, Картон -->
+            <div class="section">
+                <div class="section-title">🎨 Дополнительно</div>
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasCaps">
+                        Шапки (NALEPKING)
+                        <span class="badge badge-blue">→ скобы ×2</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasNonFormal">
+                        Неформалки
+                        <span class="badge badge-orange">→ скобы ×2</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasCardboard">
+                        Картон (вкладыши)
+                        <span class="badge badge-green">A6/24 • A5/12 • A7/48</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Специальные пакеты -->
+            <div class="section">
+                <div class="section-title">📦 Специальные пакеты</div>
+                <div class="special-group">
+                    <div class="special-item" id="astpContainer">
+                        <input type="checkbox" id="hasASTP">
+                        <label for="hasASTP">ASTP 180*180*40</label>
+                        <input type="number" id="astpQuantity" min="0" step="1" value="0" disabled>
+                        <span style="font-size:12px;color:#888;">шт</span>
+                    </div>
+                    <div class="special-item" id="quantContainer">
+                        <input type="checkbox" id="hasQuant">
+                        <label for="hasQuant">Кванты 170*250*60</label>
+                        <input type="number" id="quantQuantity" min="0" step="1" value="0" disabled>
+                        <span style="font-size:12px;color:#888;">шт</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Коробки -->
+            <div class="section">
+                <div class="section-title">📦 Коробки</div>
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasBoxes">
+                        Добавить коробки
+                    </label>
+                </div>
+                
+                <div id="boxesSection" style="display:none; margin-top:12px;">
+                    <div class="boxes-grid" id="boxesGrid">
+                        <div class="box-item">
+                            <label>📦</label>
+                            <select class="box-type" id="boxType1">
+                                <option value="MB_SMALL">Малый MB</option>
+                                <option value="AMAZON">Амазон</option>
+                                <option value="OZON">Ozon хороший</option>
+                                <option value="STAND_BOX">Для стоек</option>
+                                <option value="BOY_BIG">Пацанские большие</option>
+                            </select>
+                            <input type="number" class="box-qty" id="boxQty1" min="0" step="1" value="0">
+                            <span style="font-size:12px;color:#888;">шт</span>
+                        </div>
+                        <div class="box-item">
+                            <label>📦</label>
+                            <select class="box-type" id="boxType2">
+                                <option value="MB_SMALL">Малый MB</option>
+                                <option value="AMAZON" selected>Амазон</option>
+                                <option value="OZON">Ozon хороший</option>
+                                <option value="STAND_BOX">Для стоек</option>
+                                <option value="BOY_BIG">Пацанские большие</option>
+                            </select>
+                            <input type="number" class="box-qty" id="boxQty2" min="0" step="1" value="0">
+                            <span style="font-size:12px;color:#888;">шт</span>
+                        </div>
+                        <div class="box-item">
+                            <label>📦</label>
+                            <select class="box-type" id="boxType3">
+                                <option value="MB_SMALL">Малый MB</option>
+                                <option value="AMAZON">Амазон</option>
+                                <option value="OZON" selected>Ozon хороший</option>
+                                <option value="STAND_BOX">Для стоек</option>
+                                <option value="BOY_BIG">Пацанские большие</option>
+                            </select>
+                            <input type="number" class="box-qty" id="boxQty3" min="0" step="1" value="0">
+                            <span style="font-size:12px;color:#888;">шт</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="addBoxRow()">
+                        + Добавить коробку
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Расчет -->
+            <div class="calculation-preview" id="calculationPreview">
+                <div style="font-size:12px;color:#666;margin-bottom:8px;">📊 ПРЕДВАРИТЕЛЬНЫЙ РАСЧЕТ</div>
+                
+                <div class="calc-section">📄 ПАКЕТ</div>
+                <div class="calc-row">
+                    <span class="calc-label" id="previewPackageLabel">Пакет А6</span>
+                    <span class="calc-value" id="previewPackage">0 шт</span>
+                </div>
+                
+                <div class="calc-section">🎨 ДОПОЛНИТЕЛЬНО</div>
+                <div class="calc-row">
+                    <span class="calc-label">Шапки (NALEPKING)</span>
+                    <span class="calc-value" id="previewCaps">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Неформалки</span>
+                    <span class="calc-value" id="previewNonFormal">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Скобы (×2)</span>
+                    <span class="calc-value" id="previewStaples">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Картон (вкладыши)</span>
+                    <span class="calc-value" id="previewCardboard">0 шт</span>
+                </div>
+                
+                <div class="calc-section">📦 СПЕЦИАЛЬНЫЕ</div>
+                <div class="calc-row">
+                    <span class="calc-label">ASTP 180*180*40</span>
+                    <span class="calc-value" id="previewASTP">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Кванты 170*250*60</span>
+                    <span class="calc-value" id="previewQuant">0 шт</span>
+                </div>
+                
+                <div class="calc-section">📦 КОРОБКИ</div>
+                <div id="previewBoxes">
+                    <div class="calc-row">
+                        <span class="calc-label" style="color:#555;">Нет коробок</span>
+                        <span class="calc-value" style="color:#555;">—</span>
+                    </div>
+                </div>
+                
+                <div class="calc-row calc-total">
+                    <span class="calc-label">📦 ИТОГО позиций</span>
+                    <span class="calc-value" id="previewTotal">0 шт</span>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">❌ Очистить</button>
+                <button type="submit" class="btn btn-success" id="submitBtn">✅ Отгрузить</button>
+            </div>
+        </form>
+    </div>
     
-    -- Неформалки
-    IF NEW.has_non_formal AND NEW.material_quantity > 0 THEN
-        PERFORM create_movement(
-            'NONFORMAL_CAPS',
-            NEW.order_date,
-            'EXPENSE',
-            NEW.material_quantity,
-            'Неформалки для заказа ' || NEW.order_number
-        );
-    END IF;
+    <div class="toast" id="toast"></div>
     
-    -- Скобы (если есть шапки или неформалки)
-    IF (NEW.has_caps OR NEW.has_non_formal) AND NEW.material_quantity > 0 THEN
-        PERFORM create_movement(
-            'STAPLES',
-            NEW.order_date,
-            'EXPENSE',
-            NEW.material_quantity * 2,
-            'Скобы для заказа ' || NEW.order_number
-        );
-    END IF;
-    
-    -- Картон
-    IF NEW.has_cardboard AND NEW.material_quantity > 0 THEN
-        PERFORM create_cardboard_movement(
-            NEW.format,
-            NEW.material_quantity,
-            NEW.order_date,
-            NEW.order_number
-        );
-    END IF;
-    
-    -- ASTP
-    IF NEW.has_astp AND NEW.astp_quantity > 0 THEN
-        PERFORM create_movement(
-            'ASTP',
-            NEW.order_date,
-            'EXPENSE',
-            NEW.astp_quantity,
-            'ASTP для заказа ' || NEW.order_number
-        );
-    END IF;
-    
-    -- Кванты
-    IF NEW.has_quant AND NEW.quant_quantity > 0 THEN
-        PERFORM create_movement(
-            'QUANT_BAG',
-            NEW.order_date,
-            'EXPENSE',
-            NEW.quant_quantity,
-            'Кванты для заказа ' || NEW.order_number
-        );
-    END IF;
-    
-    -- Коробки
-    IF NEW.has_boxes AND NEW.boxes IS NOT NULL AND jsonb_array_length(NEW.boxes) > 0 THEN
-        FOR box_item IN SELECT * FROM jsonb_to_recordset(NEW.boxes) AS x(type TEXT, quantity INTEGER)
-        LOOP
-            PERFORM create_movement(
-                box_item.type,
-                NEW.order_date,
-                'EXPENSE',
-                box_item.quantity,
-                'Коробки для заказа ' || NEW.order_number
-            );
-        END LOOP;
-    END IF;
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Пересоздаем триггер
-DROP TRIGGER IF EXISTS trg_process_order ON orders;
-CREATE TRIGGER trg_process_order
-AFTER INSERT ON orders
-FOR EACH ROW
-EXECUTE FUNCTION process_order_materials();
+    <script>
+        // ============================================
+        // НАСТРОЙКА SUPABASE
+        // ============================================
+        
+        const SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // ============================================
+        // ПЕРЕМЕННЫЕ
+        // ============================================
+        
+        let boxRowCount = 3;
+        
+        // Сопоставление форматов с пакетами
+        const PACKAGE_MAP = {
+            'A6': 'A6_BAG',
+            'A5': 'A5_BAG',
+            'A7': 'A7_KFC',
+            'other': null
+        };
+        
+        const PACKAGE_NAMES = {
+            'A6_BAG': 'Пакет для стикерпака А6 без логов 110*150*60',
+            'A5_BAG': 'Пакет для стикерпака А5 155*210*30',
+            'A7_KFC': 'А7 KFC 80*105*40',
+            'BAG_60x80': 'Пакет 60*80',
+            'BAG_70x100': 'Пакет 70*100',
+            'BAG_60x40x30': 'Пакет 60*40*30'
+        };
+        
+        const BOX_NAMES = {
+            'MB_SMALL': 'Малый MB',
+            'AMAZON': 'Амазон',
+            'OZON': 'Ozon хороший',
+            'STAND_BOX': 'Для стоек',
+            'BOY_BIG': 'Пацанские большие'
+        };
+        
+        // ============================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Автоматическая дата
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = today.getFullYear();
+            const dateStr = `${year}-${month}-${day}`;
+            document.getElementById('orderDate').value = dateStr;
+            
+            // Стили для кнопок формата
+            document.querySelectorAll('.format-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    const radio = this.querySelector('input[type="radio"]');
+                    if (radio) radio.checked = true;
+                    
+                    document.getElementById('otherFormatGroup').style.display = 
+                        radio.value === 'other' ? 'block' : 'none';
+                    
+                    updatePreview();
+                });
+            });
+            
+            checkConnection();
+            setupEventListeners();
+            updatePreview();
+        });
+        
+        // ============================================
+        // ПРОВЕРКА ПОДКЛЮЧЕНИЯ
+        // ============================================
+        
+        async function checkConnection() {
+            const statusEl = document.getElementById('connectionStatus');
+            const bar = document.getElementById('statusBar');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('materials')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) throw error;
+                
+                statusEl.innerHTML = '✅ Подключено';
+                bar.className = 'status-bar';
+            } catch (error) {
+                console.error('Ошибка подключения:', error);
+                statusEl.innerHTML = '❌ Ошибка подключения';
+                bar.className = 'status-bar error';
+                showToast('❌ Не удалось подключиться к базе данных', 'error');
+            }
+        }
+        
+        // ============================================
+        // ОБРАБОТЧИКИ
+        // ============================================
+        
+        function setupEventListeners() {
+            document.getElementById('materialQuantity').addEventListener('input', updatePreview);
+            document.getElementById('otherFormatSelect').addEventListener('change', updatePreview);
+            
+            document.getElementById('hasCaps').addEventListener('change', updatePreview);
+            document.getElementById('hasNonFormal').addEventListener('change', updatePreview);
+            document.getElementById('hasCardboard').addEventListener('change', updatePreview);
+            
+            document.getElementById('hasASTP').addEventListener('change', function() {
+                const input = document.getElementById('astpQuantity');
+                input.disabled = !this.checked;
+                if (!this.checked) input.value = 0;
+                updatePreview();
+            });
+            document.getElementById('astpQuantity').addEventListener('input', updatePreview);
+            
+            document.getElementById('hasQuant').addEventListener('change', function() {
+                const input = document.getElementById('quantQuantity');
+                input.disabled = !this.checked;
+                if (!this.checked) input.value = 0;
+                updatePreview();
+            });
+            document.getElementById('quantQuantity').addEventListener('input', updatePreview);
+            
+            document.getElementById('hasBoxes').addEventListener('change', function() {
+                document.getElementById('boxesSection').style.display = this.checked ? 'block' : 'none';
+                updatePreview();
+            });
+            
+            document.querySelectorAll('.box-type, .box-qty').forEach(el => {
+                el.addEventListener('change', updatePreview);
+                el.addEventListener('input', updatePreview);
+            });
+            
+            document.getElementById('orderForm').addEventListener('submit', submitOrder);
+        }
+        
+        // ============================================
+        // ДОБАВЛЕНИЕ КОРОБКИ
+        // ============================================
+        
+        function addBoxRow() {
+            boxRowCount++;
+            const grid = document.getElementById('boxesGrid');
+            
+            const div = document.createElement('div');
+            div.className = 'box-item';
+            div.id = `boxRow${boxRowCount}`;
+            
+            div.innerHTML = `
+                <label>📦</label>
+                <select class="box-type" id="boxType${boxRowCount}">
+                    <option value="MB_SMALL">Малый MB</option>
+                    <option value="AMAZON">Амазон</option>
+                    <option value="OZON">Ozon хороший</option>
+                    <option value="STAND_BOX">Для стоек</option>
+                    <option value="BOY_BIG">Пацанские большие</option>
+                </select>
+                <input type="number" class="box-qty" id="boxQty${boxRowCount}" min="0" step="1" value="0">
+                <span style="font-size:12px;color:#888;">шт</span>
+                <button type="button" class="btn btn-danger" onclick="removeBoxRow(${boxRowCount})">✕</button>
+            `;
+            
+            grid.appendChild(div);
+            
+            div.querySelectorAll('.box-type, .box-qty').forEach(el => {
+                el.addEventListener('change', updatePreview);
+                el.addEventListener('input', updatePreview);
+            });
+            
+            updatePreview();
+        }
+        
+        function removeBoxRow(id) {
+            const row = document.getElementById(`boxRow${id}`);
+            if (row) {
+                row.remove();
+                updatePreview();
+            }
+        }
+        
+        // ============================================
+        // РАСЧЕТ
+        // ============================================
+        
+        function calculate() {
+            const quantity = parseInt(document.getElementById('materialQuantity').value) || 0;
+            const formatEl = document.querySelector('input[name="format"]:checked');
+            const format = formatEl ? formatEl.value : 'A6';
+            
+            let packageCode = PACKAGE_MAP[format];
+            if (format === 'other') {
+                packageCode = document.getElementById('otherFormatSelect').value;
+            }
+            
+            const hasCaps = document.getElementById('hasCaps').checked;
+            const hasNonFormal = document.getElementById('hasNonFormal').checked;
+            const hasCardboard = document.getElementById('hasCardboard').checked;
+            const hasASTP = document.getElementById('hasASTP').checked;
+            const astpQty = parseInt(document.getElementById('astpQuantity').value) || 0;
+            const hasQuant = document.getElementById('hasQuant').checked;
+            const quantQty = parseInt(document.getElementById('quantQuantity').value) || 0;
+            
+            const totalCapsOrNonFormal = (hasCaps ? quantity : 0) + (hasNonFormal ? quantity : 0);
+            const staples = totalCapsOrNonFormal * 2;
+            
+            const result = {
+                package: {
+                    code: packageCode,
+                    name: PACKAGE_NAMES[packageCode] || packageCode,
+                    quantity: quantity
+                },
+                material: {
+                    quantity: quantity
+                },
+                caps: hasCaps ? quantity : 0,
+                nonFormal: hasNonFormal ? quantity : 0,
+                staples: staples,
+                cardboard: 0,
+                astp: hasASTP ? astpQty : 0,
+                quant: hasQuant ? quantQty : 0,
+                boxes: [],
+                totalItems: 0
+            };
+            
+            // Картон
+            if (hasCardboard && quantity > 0) {
+                let cardboardQty = 0;
+                switch (format) {
+                    case 'A6': cardboardQty = quantity / 24; break;
+                    case 'A5': cardboardQty = quantity / 12; break;
+                    case 'A7': cardboardQty = quantity / 48; break;
+                    case 'other': cardboardQty = quantity / 24; break;
+                    default: cardboardQty = quantity / 24;
+                }
+                result.cardboard = Math.round(cardboardQty * 1000) / 1000;
+            }
+            
+            // Коробки
+            const hasBoxes = document.getElementById('hasBoxes').checked;
+            if (hasBoxes) {
+                for (let i = 1; i <= boxRowCount; i++) {
+                    const typeEl = document.getElementById(`boxType${i}`);
+                    const qtyEl = document.getElementById(`boxQty${i}`);
+                    if (typeEl && qtyEl) {
+                        const qty = parseInt(qtyEl.value) || 0;
+                        if (qty > 0) {
+                            result.boxes.push({
+                                code: typeEl.value,
+                                name: BOX_NAMES[typeEl.value] || typeEl.value,
+                                quantity: qty
+                            });
+                        }
+                    }
+                }
+            }
+            
+            let total = 0;
+            if (result.package.quantity > 0) total++;
+            if (result.caps > 0) total++;
+            if (result.nonFormal > 0) total++;
+            if (result.staples > 0) total++;
+            if (result.cardboard > 0) total++;
+            if (result.astp > 0) total++;
+            if (result.quant > 0) total++;
+            if (result.boxes.length > 0) total += result.boxes.length;
+            result.totalItems = total;
+            
+            return result;
+        }
+        
+        // ============================================
+        // ОБНОВЛЕНИЕ ПРЕДПРОСМОТРА
+        // ============================================
+        
+        function updatePreview() {
+            const calc = calculate();
+            
+            const formatEl = document.querySelector('input[name="format"]:checked');
+            const format = formatEl ? formatEl.value : 'A6';
+            const formatLabels = { 'A6': 'А6', 'A5': 'А5', 'A7': 'А7', 'other': 'Иной' };
+            const formatLabel = formatLabels[format] || format;
+            
+            // Пакет
+            const packageName = calc.package.name || '—';
+            document.getElementById('previewPackageLabel').textContent = packageName;
+            document.getElementById('previewPackage').textContent = 
+                calc.package.quantity > 0 ? `${calc.package.quantity} шт (${formatLabel})` : '—';
+            
+            // Дополнительно
+            document.getElementById('previewCaps').textContent = 
+                calc.caps > 0 ? `${calc.caps} шт` : '—';
+            
+            document.getElementById('previewNonFormal').textContent = 
+                calc.nonFormal > 0 ? `${calc.nonFormal} шт` : '—';
+            
+            document.getElementById('previewStaples').textContent = 
+                calc.staples > 0 ? `${calc.staples} шт` : '—';
+            
+            document.getElementById('previewCardboard').textContent = 
+                calc.cardboard > 0 ? `${calc.cardboard} шт` : '—';
+            
+            document.getElementById('previewASTP').textContent = 
+                calc.astp > 0 ? `${calc.astp} шт` : '—';
+            
+            document.getElementById('previewQuant').textContent = 
+                calc.quant > 0 ? `${calc.quant} шт` : '—';
+            
+            // Коробки
+            const boxesContainer = document.getElementById('previewBoxes');
+            if (calc.boxes.length === 0) {
+                boxesContainer.innerHTML = `
+                    <div class="calc-row">
+                        <span class="calc-label" style="color:#555;">Нет коробок</span>
+                        <span class="calc-value" style="color:#555;">—</span>
+                    </div>
+                `;
+            } else {
+                boxesContainer.innerHTML = calc.boxes.map(box => `
+                    <div class="calc-row">
+                        <span class="calc-label">${box.name}</span>
+                        <span class="calc-value">${box.quantity} шт</span>
+                    </div>
+                `).join('');
+            }
+            
+            document.getElementById('previewTotal').textContent = 
+                `${calc.totalItems} позиций`;
+        }
+        
+        // ============================================
+        // ОТПРАВКА ЗАКАЗА
+        // ============================================
+        
+        async function submitOrder(event) {
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Отправка...';
+            
+            try {
+                const calc = calculate();
+                
+                const boxes = calc.boxes.map(box => ({
+                    type: box.code,
+                    quantity: box.quantity
+                }));
+                
+                // Определяем код пакета
+                const formatEl = document.querySelector('input[name="format"]:checked');
+                const format = formatEl ? formatEl.value : 'A6';
+                let packageCode = PACKAGE_MAP[format];
+                if (format === 'other') {
+                    packageCode = document.getElementById('otherFormatSelect').value;
+                }
+                
+                const orderData = {
+                    order_number: document.getElementById('orderNumber').value.trim(),
+                    order_date: document.getElementById('orderDate').value,
+                    material_type: document.getElementById('materialType').value,
+                    material_quantity: parseInt(document.getElementById('materialQuantity').value) || 0,
+                    format: format,
+                    other_format: format === 'other' ? document.getElementById('otherFormatSelect').value : '',
+                    package_code: packageCode,
+                    has_caps: document.getElementById('hasCaps').checked,
+                    has_non_formal: document.getElementById('hasNonFormal').checked,
+                    has_cardboard: document.getElementById('hasCardboard').checked,
+                    has_astp: document.getElementById('hasASTP').checked,
+                    astp_quantity: parseInt(document.getElementById('astpQuantity').value) || 0,
+                    has_quant: document.getElementById('hasQuant').checked,
+                    quant_quantity: parseInt(document.getElementById('quantQuantity').value) || 0,
+                    has_boxes: document.getElementById('hasBoxes').checked,
+                    boxes: boxes,
+                    calculation: calc
+                };
+                
+                if (!orderData.order_number) {
+                    showToast('❌ Введите номер заказа', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ Отгрузить';
+                    return;
+                }
+                
+                if (orderData.material_quantity < 1 && !orderData.has_boxes) {
+                    showToast('❌ Укажите количество материала или коробки', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ Отгрузить';
+                    return;
+                }
+                
+                const { data, error } = await supabase
+                    .from('orders')
+                    .insert([orderData])
+                    .select();
+                
+                if (error) throw error;
+                
+                showToast(`✅ Заказ ${orderData.order_number} успешно отгружен!`, 'success');
+                
+                console.log('📦 Отгрузка:', {
+                    order: orderData.order_number,
+                    calculation: orderData.calculation,
+                    boxes: orderData.boxes,
+                    response: data
+                });
+                
+            } catch (error) {
+                console.error('❌ Ошибка:', error);
+                showToast(`❌ Ошибка: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '✅ Отгрузить';
+            }
+        }
+        
+        // ============================================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // ============================================
+        
+        function resetForm() {
+            document.getElementById('orderNumber').value = '';
+            document.getElementById('materialQuantity').value = 1;
+            
+            document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.format-btn input[value="A6"]').closest('.format-btn').classList.add('active');
+            document.querySelector('input[name="format"][value="A6"]').checked = true;
+            document.getElementById('otherFormatGroup').style.display = 'none';
+            
+            document.getElementById('hasCaps').checked = false;
+            document.getElementById('hasNonFormal').checked = false;
+            document.getElementById('hasCardboard').checked = false;
+            document.getElementById('hasASTP').checked = false;
+            document.getElementById('astpQuantity').value = 0;
+            document.getElementById('astpQuantity').disabled = true;
+            document.getElementById('hasQuant').checked = false;
+            document.getElementById('quantQuantity').value = 0;
+            document.getElementById('quantQuantity').disabled = true;
+            document.getElementById('hasBoxes').checked = false;
+            document.getElementById('boxesSection').style.display = 'none';
+            
+            for (let i = 1; i <= 3; i++) {
+                const qtyEl = document.getElementById(`boxQty${i}`);
+                if (qtyEl) qtyEl.value = 0;
+            }
+            
+            for (let i = 4; i <= boxRowCount; i++) {
+                const row = document.getElementById(`boxRow${i}`);
+                if (row) row.remove();
+            }
+            boxRowCount = 3;
+            
+            updatePreview();
+            showToast('🔄 Форма очищена', 'info');
+        }
+        
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
