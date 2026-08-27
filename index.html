@@ -1,108 +1,1171 @@
--- Добавляем новые колонки
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS no_package BOOLEAN DEFAULT FALSE;
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS boxes JSONB DEFAULT '[]'::jsonb;
-
--- Обновляем триггер для обработки новых полей
-CREATE OR REPLACE FUNCTION process_order_materials()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Если НЕ "без пакета" - списываем основной материал
-    IF NOT NEW.no_package THEN
-        PERFORM create_movement(
-            NEW.material_type,
-            NEW.order_date,
-            'EXPENSE',
-            NEW.material_quantity,
-            'Заказ ' || NEW.order_number
-        );
-    END IF;
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Отгрузка заказа</title>
     
-    -- Шапки (если есть)
-    IF NEW.has_caps AND NOT NEW.no_package THEN
-        PERFORM create_movement(
-            'NALEPKING',
-            NEW.order_date,
-            'EXPENSE',
-            NEW.material_quantity,
-            'Шапки для заказа ' || NEW.order_number
-        );
-    END IF;
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    -- Неформалки (если есть)
-    IF NEW.has_non_formal AND NOT NEW.no_package THEN
-        PERFORM create_movement(
-            'NALEPKING',  -- Используем тот же материал
-            NEW.order_date,
-            'EXPENSE',
-            NEW.material_quantity,
-            'Неформалки для заказа ' || NEW.order_number
-        );
-    END IF;
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .form-row-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 6px;
+        }
+        
+        label .required {
+            color: #e74c3c;
+            margin-left: 4px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            background: white;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4a90d9;
+        }
+        
+        input[type="number"] {
+            width: 120px;
+        }
+        
+        .section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-title::before {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #ddd;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 8px 0;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .checkbox-item input[type="checkbox"],
+        .checkbox-item input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #4a90d9;
+        }
+        
+        .special-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .special-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e8e8e8;
+            transition: border-color 0.2s;
+        }
+        
+        .special-item.active {
+            border-color: #4a90d9;
+            background: #f0f7ff;
+        }
+        
+        .special-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #4a90d9;
+        }
+        
+        .special-item input[type="number"] {
+            width: 80px;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .special-item input[type="number"]:disabled {
+            opacity: 0.5;
+            background: #f5f5f5;
+        }
+        
+        .special-item label {
+            margin: 0;
+            font-weight: 500;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        
+        /* Блок коробок */
+        .boxes-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        
+        .box-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e8e8e8;
+        }
+        
+        .box-item select {
+            width: 100px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .box-item input[type="number"] {
+            width: 70px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .box-item label {
+            margin: 0;
+            font-weight: 500;
+            font-size: 13px;
+            white-space: nowrap;
+            min-width: 40px;
+        }
+        
+        .calculation-preview {
+            background: #1a1a2e;
+            color: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .calculation-preview .calc-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        
+        .calculation-preview .calc-row:last-child {
+            border-bottom: none;
+        }
+        
+        .calculation-preview .calc-label {
+            color: #aaa;
+        }
+        
+        .calculation-preview .calc-value {
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+        
+        .calculation-preview .calc-total {
+            border-top: 2px solid #4fc3f7;
+            margin-top: 8px;
+            padding-top: 8px;
+            font-size: 16px;
+        }
+        
+        .calculation-preview .calc-total .calc-value {
+            color: #81c784;
+            font-size: 18px;
+        }
+        
+        .calculation-preview .calc-section {
+            color: #888;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+            padding-top: 4px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        .btn {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: #4a90d9;
+            color: white;
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .btn-primary:hover {
+            background: #357abd;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(74, 144, 217, 0.3);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #e8e8e8;
+            color: #555;
+        }
+        
+        .btn-secondary:hover {
+            background: #ddd;
+        }
+        
+        .btn-success {
+            background: #43a047;
+            color: white;
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .btn-success:hover {
+            background: #388e3c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3);
+        }
+        
+        .btn-danger {
+            background: #e53935;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c62828;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            max-width: 400px;
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.success {
+            background: #43a047;
+        }
+        
+        .toast.error {
+            background: #e53935;
+        }
+        
+        .toast.info {
+            background: #4a90d9;
+        }
+        
+        .status-bar {
+            background: #e8f5e9;
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #2e7d32;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-bar .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #43a047;
+            margin-right: 8px;
+        }
+        
+        .status-bar.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .status-bar.error .status-dot {
+            background: #e53935;
+        }
+        
+        .box-type-select {
+            min-width: 120px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .form-row,
+            .form-row-3 {
+                grid-template-columns: 1fr;
+            }
+            
+            .special-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .boxes-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Отгрузка заказа</h1>
+        
+        <!-- Статус -->
+        <div class="status-bar" id="statusBar">
+            <span>
+                <span class="status-dot"></span>
+                Подключение к базе данных...
+            </span>
+            <span id="connectionStatus">⏳ Проверка...</span>
+        </div>
+        
+        <form id="orderForm">
+            <!-- Номер заказа и дата -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Номер заказа <span class="required">*</span></label>
+                    <input type="text" id="orderNumber" placeholder="Например: ORD-2026-08-27" required>
+                </div>
+                <div class="form-group">
+                    <label>Дата <span class="required">*</span></label>
+                    <input type="date" id="orderDate" required>
+                </div>
+            </div>
+            
+            <!-- Материал -->
+            <div class="section">
+                <div class="section-title">📄 Материал</div>
+                
+                <!-- Вариант "Без пакета" -->
+                <div class="checkbox-group" style="margin-bottom:12px;">
+                    <label class="checkbox-item" style="background:#fff3e0;padding:6px 16px;border-radius:8px;border:2px solid #ffcc80;">
+                        <input type="checkbox" id="noPackage">
+                        📦 Без пакета (только материал)
+                        <span style="font-size:12px;color:#888;">→ не списывается пакет</span>
+                    </label>
+                </div>
+                
+                <div id="packageSection">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Тип материала <span class="required">*</span></label>
+                            <select id="materialType" required>
+                                <option value="smola">Смола</option>
+                                <option value="vinil">Винил</option>
+                                <option value="other">Другое</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Количество (шт) <span class="required">*</span></label>
+                            <input type="number" id="materialQuantity" min="0" step="1" value="1" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Формат -->
+                    <div class="form-group">
+                        <label>Формат <span class="required">*</span></label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-item">
+                                <input type="radio" name="format" value="A6" checked>
+                                А6
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="radio" name="format" value="A5">
+                                А5
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="radio" name="format" value="A7">
+                                А7
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="radio" name="format" value="other">
+                                Иной
+                            </label>
+                        </div>
+                        <div class="form-group" id="otherFormatGroup" style="display:none; margin-top:10px;">
+                            <input type="text" id="otherFormat" placeholder="Укажите формат">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Шапки и картон -->
+            <div class="section">
+                <div class="section-title">🎨 Дополнительно</div>
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasCaps">
+                        Шапки (NALEPKING)
+                        <span style="font-size:12px;color:#888;">→ скобы ×2</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasNonFormal">
+                        Неформалки
+                        <span style="font-size:12px;color:#888;">→ скобы ×2</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasCardboard">
+                        Картон (вкладыши)
+                        <span style="font-size:12px;color:#888;">→ A6/24, A5/12, A7/48</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Специальные пакеты -->
+            <div class="section">
+                <div class="section-title">📦 Специальные пакеты</div>
+                <div class="special-group">
+                    <div class="special-item" id="astpContainer">
+                        <input type="checkbox" id="hasASTP">
+                        <label for="hasASTP">ASTP</label>
+                        <input type="number" id="astpQuantity" min="0" step="1" value="0" disabled>
+                    </div>
+                    <div class="special-item" id="quantContainer">
+                        <input type="checkbox" id="hasQuant">
+                        <label for="hasQuant">Кванты</label>
+                        <input type="number" id="quantQuantity" min="0" step="1" value="0" disabled>
+                    </div>
+                    <div class="special-item" id="noPackageContainer" style="border-color:#ffcc80;">
+                        <span style="font-size:13px;color:#888;">ℹ️ Без пакета</span>
+                        <span style="font-size:12px;color:#4caf50;">активно</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Коробки -->
+            <div class="section">
+                <div class="section-title">📦 Коробки</div>
+                <div class="checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasBoxes">
+                        Добавить коробки
+                    </label>
+                </div>
+                
+                <div id="boxesSection" style="display:none; margin-top:12px;">
+                    <div class="boxes-grid" id="boxesGrid">
+                        <!-- Строка 1 -->
+                        <div class="box-item">
+                            <label>Коробка</label>
+                            <select class="box-type" id="boxType1">
+                                <option value="MB_SMALL">Малый MB</option>
+                                <option value="AMAZON">Амазон</option>
+                                <option value="OZON">Ozon хороший</option>
+                                <option value="STAND_BOX">Для стоек</option>
+                                <option value="BOY_BIG">Пацанские большие</option>
+                                <option value="EUROPA">Европа</option>
+                            </select>
+                            <input type="number" class="box-qty" id="boxQty1" min="0" step="1" value="0">
+                            <span style="font-size:12px;color:#888;">шт</span>
+                        </div>
+                        <!-- Строка 2 -->
+                        <div class="box-item">
+                            <label>Коробка</label>
+                            <select class="box-type" id="boxType2">
+                                <option value="MB_SMALL">Малый MB</option>
+                                <option value="AMAZON" selected>Амазон</option>
+                                <option value="OZON">Ozon хороший</option>
+                                <option value="STAND_BOX">Для стоек</option>
+                                <option value="BOY_BIG">Пацанские большие</option>
+                                <option value="EUROPA">Европа</option>
+                            </select>
+                            <input type="number" class="box-qty" id="boxQty2" min="0" step="1" value="0">
+                            <span style="font-size:12px;color:#888;">шт</span>
+                        </div>
+                        <!-- Строка 3 -->
+                        <div class="box-item">
+                            <label>Коробка</label>
+                            <select class="box-type" id="boxType3">
+                                <option value="MB_SMALL">Малый MB</option>
+                                <option value="AMAZON">Амазон</option>
+                                <option value="OZON" selected>Ozon хороший</option>
+                                <option value="STAND_BOX">Для стоек</option>
+                                <option value="BOY_BIG">Пацанские большие</option>
+                                <option value="EUROPA">Европа</option>
+                            </select>
+                            <input type="number" class="box-qty" id="boxQty3" min="0" step="1" value="0">
+                            <span style="font-size:12px;color:#888;">шт</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" style="margin-top:10px;padding:8px 16px;font-size:13px;" onclick="addBoxRow()">
+                        + Добавить коробку
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Расчет -->
+            <div class="calculation-preview" id="calculationPreview">
+                <div style="font-size:12px;color:#888;margin-bottom:8px;">📊 ПРЕДВАРИТЕЛЬНЫЙ РАСЧЕТ</div>
+                
+                <div class="calc-section">📄 МАТЕРИАЛ</div>
+                <div class="calc-row">
+                    <span class="calc-label">Пакет</span>
+                    <span class="calc-value" id="previewPackage">—</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Материал</span>
+                    <span class="calc-value" id="previewMaterial">0 шт</span>
+                </div>
+                
+                <div class="calc-section">🎨 ДОПОЛНИТЕЛЬНО</div>
+                <div class="calc-row">
+                    <span class="calc-label">Шапки (NALEPKING)</span>
+                    <span class="calc-value" id="previewCaps">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Неформалки</span>
+                    <span class="calc-value" id="previewNonFormal">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Скобы (×2)</span>
+                    <span class="calc-value" id="previewStaples">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Картон (вкладыши)</span>
+                    <span class="calc-value" id="previewCardboard">0 шт</span>
+                </div>
+                
+                <div class="calc-section">📦 СПЕЦИАЛЬНЫЕ</div>
+                <div class="calc-row">
+                    <span class="calc-label">ASTP</span>
+                    <span class="calc-value" id="previewASTP">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Кванты</span>
+                    <span class="calc-value" id="previewQuant">0 шт</span>
+                </div>
+                
+                <div class="calc-section">📦 КОРОБКИ</div>
+                <div id="previewBoxes">
+                    <div class="calc-row">
+                        <span class="calc-label" style="color:#888;">Нет коробок</span>
+                        <span class="calc-value" style="color:#888;">—</span>
+                    </div>
+                </div>
+                
+                <div class="calc-row calc-total">
+                    <span class="calc-label">📦 ИТОГО позиций</span>
+                    <span class="calc-value" id="previewTotal">0 шт</span>
+                </div>
+            </div>
+            
+            <!-- Кнопки -->
+            <div class="buttons">
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">❌ Очистить</button>
+                <button type="submit" class="btn btn-success" id="submitBtn">✅ Отгрузить</button>
+            </div>
+        </form>
+    </div>
     
-    -- Скобы (если есть шапки или неформалки)
-    IF (NEW.has_caps OR NEW.has_non_formal) AND NOT NEW.no_package THEN
-        PERFORM create_movement(
-            'STAPLES',
-            NEW.order_date,
-            'EXPENSE',
-            NEW.material_quantity * 2,
-            'Скобы для заказа ' || NEW.order_number
-        );
-    END IF;
+    <div class="toast" id="toast"></div>
     
-    -- Картон (если есть)
-    IF NEW.has_cardboard AND NOT NEW.no_package THEN
-        PERFORM create_cardboard_movement(
-            NEW.format,
-            NEW.material_quantity,
-            NEW.order_date,
-            NEW.order_number
-        );
-    END IF;
-    
-    -- ASTP
-    IF NEW.has_astp AND NEW.astp_quantity > 0 THEN
-        PERFORM create_movement(
-            'ASTP',
-            NEW.order_date,
-            'EXPENSE',
-            NEW.astp_quantity,
-            'ASTP для заказа ' || NEW.order_number
-        );
-    END IF;
-    
-    -- Кванты
-    IF NEW.has_quant AND NEW.quant_quantity > 0 THEN
-        PERFORM create_movement(
-            'QUANT_BAG',
-            NEW.order_date,
-            'EXPENSE',
-            NEW.quant_quantity,
-            'Кванты для заказа ' || NEW.order_number
-        );
-    END IF;
-    
-    -- Коробки
-    IF NEW.has_boxes AND NEW.boxes IS NOT NULL AND jsonb_array_length(NEW.boxes) > 0 THEN
-        FOR box_item IN SELECT * FROM jsonb_to_recordset(NEW.boxes) AS x(type TEXT, quantity INTEGER)
-        LOOP
-            PERFORM create_movement(
-                box_item.type,
-                NEW.order_date,
-                'EXPENSE',
-                box_item.quantity,
-                'Коробки для заказа ' || NEW.order_number
-            );
-        END LOOP;
-    END IF;
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Пересоздаем триггер
-DROP TRIGGER IF EXISTS trg_process_order ON orders;
-CREATE TRIGGER trg_process_order
-AFTER INSERT ON orders
-FOR EACH ROW
-EXECUTE FUNCTION process_order_materials();
+    <script>
+        // ============================================
+        // НАСТРОЙКА SUPABASE
+        // ============================================
+        
+        // ЗАМЕНИТЕ НА СВОИ ДАННЫЕ!
+        const SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // ============================================
+        // ПЕРЕМЕННЫЕ
+        // ============================================
+        
+        let boxRowCount = 3;
+        
+        // ============================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('orderDate').value = today;
+            
+            checkConnection();
+            setupEventListeners();
+            updatePreview();
+        });
+        
+        // ============================================
+        // ПРОВЕРКА ПОДКЛЮЧЕНИЯ
+        // ============================================
+        
+        async function checkConnection() {
+            const statusEl = document.getElementById('connectionStatus');
+            const bar = document.getElementById('statusBar');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('materials')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) throw error;
+                
+                statusEl.innerHTML = '✅ Подключено';
+                bar.className = 'status-bar';
+            } catch (error) {
+                console.error('Ошибка подключения:', error);
+                statusEl.innerHTML = '❌ Ошибка подключения';
+                bar.className = 'status-bar error';
+                showToast('❌ Не удалось подключиться к базе данных', 'error');
+            }
+        }
+        
+        // ============================================
+        // ОБРАБОТЧИКИ СОБЫТИЙ
+        // ============================================
+        
+        function setupEventListeners() {
+            // Без пакета
+            document.getElementById('noPackage').addEventListener('change', function() {
+                const section = document.getElementById('packageSection');
+                section.style.opacity = this.checked ? '0.4' : '1';
+                section.style.pointerEvents = this.checked ? 'none' : 'auto';
+                document.getElementById('noPackageContainer').style.display = this.checked ? 'flex' : 'none';
+                updatePreview();
+            });
+            
+            // Количество
+            document.getElementById('materialQuantity').addEventListener('input', updatePreview);
+            
+            // Формат
+            document.querySelectorAll('input[name="format"]').forEach(el => {
+                el.addEventListener('change', function() {
+                    document.getElementById('otherFormatGroup').style.display = 
+                        this.value === 'other' ? 'block' : 'none';
+                    updatePreview();
+                });
+            });
+            
+            // Чекбоксы
+            document.getElementById('hasCaps').addEventListener('change', updatePreview);
+            document.getElementById('hasNonFormal').addEventListener('change', updatePreview);
+            document.getElementById('hasCardboard').addEventListener('change', updatePreview);
+            
+            // ASTP
+            document.getElementById('hasASTP').addEventListener('change', function() {
+                const input = document.getElementById('astpQuantity');
+                input.disabled = !this.checked;
+                if (!this.checked) input.value = 0;
+                updatePreview();
+            });
+            document.getElementById('astpQuantity').addEventListener('input', updatePreview);
+            
+            // Кванты
+            document.getElementById('hasQuant').addEventListener('change', function() {
+                const input = document.getElementById('quantQuantity');
+                input.disabled = !this.checked;
+                if (!this.checked) input.value = 0;
+                updatePreview();
+            });
+            document.getElementById('quantQuantity').addEventListener('input', updatePreview);
+            
+            // Коробки
+            document.getElementById('hasBoxes').addEventListener('change', function() {
+                document.getElementById('boxesSection').style.display = this.checked ? 'block' : 'none';
+                updatePreview();
+            });
+            
+            // Коробки - изменения
+            document.querySelectorAll('.box-type, .box-qty').forEach(el => {
+                el.addEventListener('change', updatePreview);
+                el.addEventListener('input', updatePreview);
+            });
+            
+            // Отправка
+            document.getElementById('orderForm').addEventListener('submit', submitOrder);
+        }
+        
+        // ============================================
+        // ДОБАВЛЕНИЕ КОРОБКИ
+        // ============================================
+        
+        function addBoxRow() {
+            boxRowCount++;
+            const grid = document.getElementById('boxesGrid');
+            
+            const div = document.createElement('div');
+            div.className = 'box-item';
+            div.id = `boxRow${boxRowCount}`;
+            
+            div.innerHTML = `
+                <label>Коробка</label>
+                <select class="box-type" id="boxType${boxRowCount}">
+                    <option value="MB_SMALL">Малый MB</option>
+                    <option value="AMAZON">Амазон</option>
+                    <option value="OZON">Ozon хороший</option>
+                    <option value="STAND_BOX">Для стоек</option>
+                    <option value="BOY_BIG">Пацанские большие</option>
+                    <option value="EUROPA">Европа</option>
+                </select>
+                <input type="number" class="box-qty" id="boxQty${boxRowCount}" min="0" step="1" value="0">
+                <span style="font-size:12px;color:#888;">шт</span>
+                <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:12px;" onclick="removeBoxRow(${boxRowCount})">✕</button>
+            `;
+            
+            grid.appendChild(div);
+            
+            // Добавляем обработчики
+            div.querySelectorAll('.box-type, .box-qty').forEach(el => {
+                el.addEventListener('change', updatePreview);
+                el.addEventListener('input', updatePreview);
+            });
+            
+            updatePreview();
+        }
+        
+        function removeBoxRow(id) {
+            const row = document.getElementById(`boxRow${id}`);
+            if (row) {
+                row.remove();
+                updatePreview();
+            }
+        }
+        
+        // ============================================
+        // РАСЧЕТ
+        // ============================================
+        
+        function calculate() {
+            const noPackage = document.getElementById('noPackage').checked;
+            const quantity = parseInt(document.getElementById('materialQuantity').value) || 0;
+            const format = document.querySelector('input[name="format"]:checked')?.value || 'A6';
+            const hasCaps = document.getElementById('hasCaps').checked;
+            const hasNonFormal = document.getElementById('hasNonFormal').checked;
+            const hasCardboard = document.getElementById('hasCardboard').checked;
+            const hasASTP = document.getElementById('hasASTP').checked;
+            const astpQty = parseInt(document.getElementById('astpQuantity').value) || 0;
+            const hasQuant = document.getElementById('hasQuant').checked;
+            const quantQty = parseInt(document.getElementById('quantQuantity').value) || 0;
+            
+            // Скобы = (шапки + неформалки) × 2
+            const totalCapsOrNonFormal = (hasCaps ? quantity : 0) + (hasNonFormal ? quantity : 0);
+            const staples = totalCapsOrNonFormal * 2;
+            
+            const result = {
+                noPackage: noPackage,
+                package: {
+                    format: noPackage ? 'БЕЗ ПАКЕТА' : format,
+                    quantity: noPackage ? 0 : quantity
+                },
+                material: {
+                    quantity: quantity
+                },
+                caps: hasCaps ? quantity : 0,
+                nonFormal: hasNonFormal ? quantity : 0,
+                staples: staples,
+                cardboard: 0,
+                astp: hasASTP ? astpQty : 0,
+                quant: hasQuant ? quantQty : 0,
+                boxes: [],
+                totalItems: 0
+            };
+            
+            // Картон (только если есть пакет)
+            if (!noPackage && hasCardboard && quantity > 0) {
+                let cardboardQty = 0;
+                switch (format) {
+                    case 'A6': cardboardQty = quantity / 24; break;
+                    case 'A5': cardboardQty = quantity / 12; break;
+                    case 'A7': cardboardQty = quantity / 48; break;
+                    case 'other': cardboardQty = quantity / 24; break;
+                    default: cardboardQty = quantity / 24;
+                }
+                result.cardboard = Math.round(cardboardQty * 1000) / 1000;
+            }
+            
+            // Коробки
+            const hasBoxes = document.getElementById('hasBoxes').checked;
+            if (hasBoxes) {
+                for (let i = 1; i <= boxRowCount; i++) {
+                    const typeEl = document.getElementById(`boxType${i}`);
+                    const qtyEl = document.getElementById(`boxQty${i}`);
+                    if (typeEl && qtyEl) {
+                        const qty = parseInt(qtyEl.value) || 0;
+                        if (qty > 0) {
+                            result.boxes.push({
+                                type: typeEl.value,
+                                quantity: qty
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // Подсчет позиций
+            let total = 0;
+            if (result.material.quantity > 0) total++;
+            if (result.caps > 0) total++;
+            if (result.nonFormal > 0) total++;
+            if (result.staples > 0) total++;
+            if (result.cardboard > 0) total++;
+            if (result.astp > 0) total++;
+            if (result.quant > 0) total++;
+            if (result.boxes.length > 0) total += result.boxes.length;
+            result.totalItems = total;
+            
+            return result;
+        }
+        
+        // ============================================
+        // ОБНОВЛЕНИЕ ПРЕДПРОСМОТРА
+        // ============================================
+        
+        function updatePreview() {
+            const calc = calculate();
+            
+            const formatLabels = {
+                'A6': 'А6',
+                'A5': 'А5',
+                'A7': 'А7',
+                'other': 'Иной',
+                'БЕЗ ПАКЕТА': 'Без пакета'
+            };
+            
+            const formatLabel = formatLabels[calc.package.format] || calc.package.format;
+            
+            // Материал
+            if (calc.noPackage) {
+                document.getElementById('previewPackage').textContent = '❌ Без пакета';
+                document.getElementById('previewPackage').style.color = '#ffb74d';
+            } else {
+                document.getElementById('previewPackage').textContent = 
+                    `${calc.package.quantity} шт (${formatLabel})`;
+                document.getElementById('previewPackage').style.color = '#4fc3f7';
+            }
+            
+            document.getElementById('previewMaterial').textContent = 
+                `${calc.material.quantity} шт`;
+            
+            // Дополнительно
+            document.getElementById('previewCaps').textContent = 
+                calc.caps > 0 ? `${calc.caps} шт` : '—';
+            
+            document.getElementById('previewNonFormal').textContent = 
+                calc.nonFormal > 0 ? `${calc.nonFormal} шт` : '—';
+            
+            document.getElementById('previewStaples').textContent = 
+                calc.staples > 0 ? `${calc.staples} шт` : '—';
+            
+            document.getElementById('previewCardboard').textContent = 
+                calc.cardboard > 0 ? `${calc.cardboard} шт` : '—';
+            
+            // Специальные
+            document.getElementById('previewASTP').textContent = 
+                calc.astp > 0 ? `${calc.astp} шт` : '—';
+            
+            document.getElementById('previewQuant').textContent = 
+                calc.quant > 0 ? `${calc.quant} шт` : '—';
+            
+            // Коробки
+            const boxesContainer = document.getElementById('previewBoxes');
+            if (calc.boxes.length === 0) {
+                boxesContainer.innerHTML = `
+                    <div class="calc-row">
+                        <span class="calc-label" style="color:#888;">Нет коробок</span>
+                        <span class="calc-value" style="color:#888;">—</span>
+                    </div>
+                `;
+            } else {
+                boxesContainer.innerHTML = calc.boxes.map(box => `
+                    <div class="calc-row">
+                        <span class="calc-label">${getBoxName(box.type)}</span>
+                        <span class="calc-value">${box.quantity} шт</span>
+                    </div>
+                `).join('');
+            }
+            
+            // Итого
+            document.getElementById('previewTotal').textContent = 
+                `${calc.totalItems} позиций`;
+        }
+        
+        function getBoxName(code) {
+            const names = {
+                'MB_SMALL': 'Малый MB',
+                'AMAZON': 'Амазон',
+                'OZON': 'Ozon хороший',
+                'STAND_BOX': 'Для стоек',
+                'BOY_BIG': 'Пацанские большие',
+                'EUROPA': 'Европа'
+            };
+            return names[code] || code;
+        }
+        
+        // ============================================
+        // ОТПРАВКА ЗАКАЗА
+        // ============================================
+        
+        async function submitOrder(event) {
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Отправка...';
+            
+            try {
+                const calc = calculate();
+                
+                // Собираем коробки в массив
+                const boxes = calc.boxes.map(box => ({
+                    type: box.type,
+                    quantity: box.quantity
+                }));
+                
+                const orderData = {
+                    order_number: document.getElementById('orderNumber').value.trim(),
+                    order_date: document.getElementById('orderDate').value,
+                    material_type: document.getElementById('materialType').value,
+                    material_quantity: parseInt(document.getElementById('materialQuantity').value) || 0,
+                    format: document.querySelector('input[name="format"]:checked')?.value || 'A6',
+                    other_format: document.getElementById('otherFormat').value.trim(),
+                    no_package: document.getElementById('noPackage').checked,
+                    has_caps: document.getElementById('hasCaps').checked,
+                    has_non_formal: document.getElementById('hasNonFormal').checked,
+                    has_cardboard: document.getElementById('hasCardboard').checked,
+                    has_astp: document.getElementById('hasASTP').checked,
+                    astp_quantity: parseInt(document.getElementById('astpQuantity').value) || 0,
+                    has_quant: document.getElementById('hasQuant').checked,
+                    quant_quantity: parseInt(document.getElementById('quantQuantity').value) || 0,
+                    has_boxes: document.getElementById('hasBoxes').checked,
+                    boxes: boxes,
+                    calculation: calc
+                };
+                
+                // Валидация
+                if (!orderData.order_number) {
+                    showToast('❌ Введите номер заказа', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ Отгрузить';
+                    return;
+                }
+                
+                if (orderData.material_quantity < 1 && !orderData.has_boxes) {
+                    showToast('❌ Укажите количество материала или коробки', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ Отгрузить';
+                    return;
+                }
+                
+                // Отправляем в Supabase
+                const { data, error } = await supabase
+                    .from('orders')
+                    .insert([orderData])
+                    .select();
+                
+                if (error) throw error;
+                
+                showToast(`✅ Заказ ${orderData.order_number} успешно отгружен!`, 'success');
+                
+                console.log('📦 Отгрузка:', {
+                    order: orderData.order_number,
+                    calculation: orderData.calculation,
+                    boxes: orderData.boxes,
+                    response: data
+                });
+                
+            } catch (error) {
+                console.error('❌ Ошибка:', error);
+                showToast(`❌ Ошибка: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '✅ Отгрузить';
+            }
+        }
+        
+        // ============================================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // ============================================
+        
+        function resetForm() {
+            document.getElementById('orderNumber').value = '';
+            document.getElementById('materialQuantity').value = 1;
+            document.querySelector('input[name="format"][value="A6"]').checked = true;
+            document.getElementById('otherFormatGroup').style.display = 'none';
+            document.getElementById('otherFormat').value = '';
+            document.getElementById('noPackage').checked = false;
+            document.getElementById('packageSection').style.opacity = '1';
+            document.getElementById('packageSection').style.pointerEvents = 'auto';
+            document.getElementById('hasCaps').checked = false;
+            document.getElementById('hasNonFormal').checked = false;
+            document.getElementById('hasCardboard').checked = false;
+            document.getElementById('hasASTP').checked = false;
+            document.getElementById('astpQuantity').value = 0;
+            document.getElementById('astpQuantity').disabled = true;
+            document.getElementById('hasQuant').checked = false;
+            document.getElementById('quantQuantity').value = 0;
+            document.getElementById('quantQuantity').disabled = true;
+            document.getElementById('hasBoxes').checked = false;
+            document.getElementById('boxesSection').style.display = 'none';
+            
+            // Сброс коробок
+            for (let i = 1; i <= 3; i++) {
+                const qtyEl = document.getElementById(`boxQty${i}`);
+                if (qtyEl) qtyEl.value = 0;
+            }
+            
+            // Удаляем добавленные строки коробок
+            for (let i = 4; i <= boxRowCount; i++) {
+                const row = document.getElementById(`boxRow${i}`);
+                if (row) row.remove();
+            }
+            boxRowCount = 3;
+            
+            updatePreview();
+            showToast('🔄 Форма очищена', 'info');
+        }
+        
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
