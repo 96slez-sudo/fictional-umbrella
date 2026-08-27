@@ -5,84 +5,398 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📦 Отгрузка заказа</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
     
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
-        .container { max-width: 950px; margin: 0 auto; background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        h1 { font-size: 24px; color: #1a1a2e; margin-bottom: 24px; }
-        .form-group { margin-bottom: 16px; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        label { display: block; font-weight: 600; font-size: 14px; color: #333; margin-bottom: 6px; }
-        label .required { color: #e74c3c; }
-        input, select { width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: white; }
-        input:focus, select:focus { outline: none; border-color: #4a90d9; }
-        input[type="number"] { width: 120px; }
-        .section { background: #f8f9fa; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
-        .section-title { font-size: 14px; font-weight: 700; color: #555; text-transform: uppercase; margin-bottom: 12px; }
-        .checkbox-group { display: flex; flex-wrap: wrap; gap: 16px; padding: 4px 0; }
-        .checkbox-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 6px; }
-        .checkbox-item:hover { background: #f0f0f0; }
-        .checkbox-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: #4a90d9; }
-        .special-group { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .special-item { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: white; border-radius: 8px; border: 2px solid #e8e8e8; }
-        .special-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: #4a90d9; }
-        .special-item input[type="number"] { width: 80px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
-        .special-item input[type="number"]:disabled { opacity: 0.5; background: #f5f5f5; }
-        .special-item label { margin: 0; font-weight: 500; font-size: 13px; white-space: nowrap; }
-        .boxes-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 10px; }
-        .box-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: white; border-radius: 8px; border: 2px solid #e8e8e8; }
-        .box-item select { flex: 1; min-width: 100px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
-        .box-item input[type="number"] { width: 70px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
-        .box-item label { margin: 0; font-weight: 500; font-size: 13px; min-width: 30px; }
-        .calculation-preview { background: #1a1a2e; color: #fff; border-radius: 12px; padding: 20px; margin-top: 16px; font-family: 'Courier New', monospace; font-size: 14px; }
-        .calculation-preview .calc-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
-        .calculation-preview .calc-label { color: #aaa; }
-        .calculation-preview .calc-value { color: #4fc3f7; font-weight: bold; }
-        .calculation-preview .calc-total { border-top: 2px solid #4fc3f7; margin-top: 6px; padding-top: 6px; font-size: 16px; }
-        .calculation-preview .calc-total .calc-value { color: #81c784; font-size: 18px; }
-        .calculation-preview .calc-section { color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.05); }
-        .buttons { display: flex; gap: 12px; margin-top: 20px; }
-        .btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-secondary { background: #e8e8e8; color: #555; }
-        .btn-secondary:hover { background: #ddd; }
-        .btn-success { background: #43a047; color: white; flex: 1; justify-content: center; }
-        .btn-success:hover { background: #388e3c; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3); }
-        .btn-success:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .btn-danger { background: #e53935; color: white; padding: 4px 8px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; }
-        .btn-danger:hover { background: #c62828; }
-        .btn-sm { padding: 6px 14px; font-size: 13px; }
-        .toast { position: fixed; bottom: 30px; right: 30px; padding: 16px 24px; border-radius: 12px; color: white; font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,0.15); transform: translateY(100px); opacity: 0; transition: all 0.3s ease; max-width: 400px; z-index: 1000; }
-        .toast.show { transform: translateY(0); opacity: 1; }
-        .toast.success { background: #43a047; }
-        .toast.error { background: #e53935; }
-        .toast.info { background: #4a90d9; }
-        .status-bar { background: #e8f5e9; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; color: #2e7d32; display: flex; justify-content: space-between; align-items: center; }
-        .status-bar .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #43a047; margin-right: 8px; }
-        .status-bar.error { background: #ffebee; color: #c62828; }
-        .status-bar.error .status-dot { background: #e53935; }
-        .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-        .badge-blue { background: #e3f2fd; color: #1565c0; }
-        .badge-green { background: #e8f5e9; color: #2e7d32; }
-        .badge-orange { background: #fff3e0; color: #e65100; }
-        .format-selector { display: flex; flex-wrap: wrap; gap: 8px; }
-        .format-selector .format-btn { padding: 6px 16px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
-        .format-selector .format-btn:hover { border-color: #4a90d9; background: #f0f7ff; }
-        .format-selector .format-btn.active { border-color: #4a90d9; background: #4a90d9; color: white; }
-        .format-selector .format-btn input { display: none; }
-        @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } .special-group { grid-template-columns: 1fr; } .boxes-grid { grid-template-columns: 1fr; } .buttons { flex-direction: column; } }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 24px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 6px;
+        }
+        label .required {
+            color: #e74c3c;
+        }
+        input,
+        select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #4a90d9;
+        }
+        input[type="number"] {
+            max-width: 120px;
+        }
+        .section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #555;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 4px 0;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .checkbox-item:hover {
+            background: #f0f0f0;
+        }
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #4a90d9;
+        }
+        .special-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .special-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 14px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e8e8e8;
+        }
+        .special-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #4a90d9;
+        }
+        .special-item input[type="number"] {
+            width: 80px;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .special-item input[type="number"]:disabled {
+            opacity: 0.5;
+            background: #f5f5f5;
+        }
+        .special-item label {
+            margin: 0;
+            font-weight: 500;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .boxes-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .box-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e8e8e8;
+        }
+        .box-item select {
+            flex: 1;
+            min-width: 100px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .box-item input[type="number"] {
+            width: 70px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .box-item label {
+            margin: 0;
+            font-weight: 500;
+            font-size: 13px;
+            min-width: 30px;
+        }
+        .calculation-preview {
+            background: #1a1a2e;
+            color: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .calculation-preview .calc-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .calculation-preview .calc-label {
+            color: #aaa;
+        }
+        .calculation-preview .calc-value {
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+        .calculation-preview .calc-total {
+            border-top: 2px solid #4fc3f7;
+            margin-top: 6px;
+            padding-top: 6px;
+            font-size: 16px;
+        }
+        .calculation-preview .calc-total .calc-value {
+            color: #81c784;
+            font-size: 18px;
+        }
+        .calculation-preview .calc-section {
+            color: #666;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 6px;
+            padding-top: 4px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-secondary {
+            background: #e8e8e8;
+            color: #555;
+        }
+        .btn-secondary:hover {
+            background: #ddd;
+        }
+        .btn-success {
+            background: #43a047;
+            color: white;
+            flex: 1;
+            justify-content: center;
+        }
+        .btn-success:hover {
+            background: #388e3c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3);
+        }
+        .btn-success:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-danger {
+            background: #e53935;
+            color: white;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-danger:hover {
+            background: #c62828;
+        }
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            max-width: 400px;
+            z-index: 1000;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.success {
+            background: #43a047;
+        }
+        .toast.error {
+            background: #e53935;
+        }
+        .toast.info {
+            background: #4a90d9;
+        }
+        .status-bar {
+            background: #e8f5e9;
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: #2e7d32;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-bar .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #43a047;
+            margin-right: 8px;
+        }
+        .status-bar.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .status-bar.error .status-dot {
+            background: #e53935;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-blue {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        .badge-green {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .badge-orange {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        .format-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .format-selector .format-btn {
+            padding: 6px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .format-selector .format-btn:hover {
+            border-color: #4a90d9;
+            background: #f0f7ff;
+        }
+        .format-selector .format-btn.active {
+            border-color: #4a90d9;
+            background: #4a90d9;
+            color: white;
+        }
+        .format-selector .format-btn input {
+            display: none;
+        }
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .special-group {
+                grid-template-columns: 1fr;
+            }
+            .boxes-grid {
+                grid-template-columns: 1fr;
+            }
+            .buttons {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📦 Отгрузка заказа</h1>
-        
+
         <div class="status-bar" id="statusBar">
             <span><span class="status-dot"></span> Подключение к базе данных...</span>
             <span id="connectionStatus">⏳ Проверка...</span>
         </div>
-        
+
         <form id="orderForm">
             <div class="form-row">
                 <div class="form-group">
@@ -94,7 +408,7 @@
                     <input type="date" id="orderDate" style="background:#f5f5f5;">
                 </div>
             </div>
-            
+
             <div class="section">
                 <div class="section-title">📄 Основной материал</div>
                 <div class="form-row">
@@ -129,7 +443,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="section">
                 <div class="section-title">🎨 Дополнительно</div>
                 <div class="checkbox-group">
@@ -138,7 +452,7 @@
                     <label class="checkbox-item"><input type="checkbox" id="hasCardboard"> Картон (вкладыши) <span class="badge badge-green">A6/24 • A5/12 • A7/48</span></label>
                 </div>
             </div>
-            
+
             <div class="section">
                 <div class="section-title">📦 Специальные пакеты</div>
                 <div class="special-group">
@@ -156,7 +470,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="section">
                 <div class="section-title">📦 Коробки</div>
                 <div class="checkbox-group">
@@ -204,7 +518,7 @@
                     <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="addBoxRow()">+ Добавить коробку</button>
                 </div>
             </div>
-            
+
             <div class="calculation-preview" id="calculationPreview">
                 <div style="font-size:12px;color:#666;margin-bottom:8px;">📊 ПРЕДВАРИТЕЛЬНЫЙ РАСЧЕТ</div>
                 <div class="calc-section">📄 ПАКЕТ</div>
@@ -221,30 +535,30 @@
                 <div id="previewBoxes"><div class="calc-row"><span class="calc-label" style="color:#555;">Нет коробок</span><span class="calc-value" style="color:#555;">—</span></div></div>
                 <div class="calc-row calc-total"><span class="calc-label">📦 ИТОГО позиций</span><span class="calc-value" id="previewTotal">0 шт</span></div>
             </div>
-            
+
             <div class="buttons">
                 <button type="button" class="btn btn-secondary" onclick="resetForm()">❌ Очистить</button>
                 <button type="submit" class="btn btn-success" id="submitBtn">✅ Отгрузить</button>
             </div>
         </form>
     </div>
-    
+
     <div class="toast" id="toast"></div>
-    
+
     <script>
         // ============================================
         // НАСТРОЙКА SUPABASE
         // ============================================
         const SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
-        
+
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
+
         // ============================================
         // ПЕРЕМЕННЫЕ
         // ============================================
         let boxRowCount = 3;
-        
+
         const PACKAGE_MAP = { 'A6': 'A6_BAG', 'A5': 'A5_BAG', 'A7': 'A7_KFC', 'other': null };
         const PACKAGE_NAMES = {
             'A6_BAG': 'Пакет для стикерпака А6 без логов 110*150*60',
@@ -261,48 +575,112 @@
             'STAND_BOX': 'Для стоек',
             'BOY_BIG': 'Пацанские большие'
         };
-        
+
         // ============================================
         // ИНИЦИАЛИЗАЦИЯ
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
             console.log('✅ Страница загружена');
-            
-            // Автоматическая дата
-            const today = new Date();
-            const day = String(today.getDate()).padStart(2, '0');
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const year = today.getFullYear();
+
+            // 1. АВТОМАТИЧЕСКАЯ ДАТА
+            var today = new Date();
+            var day = String(today.getDate()).padStart(2, '0');
+            var month = String(today.getMonth() + 1).padStart(2, '0');
+            var year = today.getFullYear();
             document.getElementById('orderDate').value = year + '-' + month + '-' + day;
             console.log('📅 Дата установлена:', document.getElementById('orderDate').value);
-            
-            // Формат
-            document.querySelectorAll('.format-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    const radio = this.querySelector('input[type="radio"]');
-                    if (radio) radio.checked = true;
-                    document.getElementById('otherFormatGroup').style.display = radio.value === 'other' ? 'block' : 'none';
-                    updatePreview();
-                });
+
+            // 2. ФОРМАТ
+            var formatBtns = document.querySelectorAll('.format-btn');
+            for (var i = 0; i < formatBtns.length; i++) {
+                (function(btn) {
+                    btn.addEventListener('click', function() {
+                        var allBtns = document.querySelectorAll('.format-btn');
+                        for (var j = 0; j < allBtns.length; j++) {
+                            allBtns[j].classList.remove('active');
+                        }
+                        this.classList.add('active');
+                        var radio = this.querySelector('input[type="radio"]');
+                        if (radio) radio.checked = true;
+                        var otherGroup = document.getElementById('otherFormatGroup');
+                        if (radio.value === 'other') {
+                            otherGroup.style.display = 'block';
+                        } else {
+                            otherGroup.style.display = 'none';
+                        }
+                        updatePreview();
+                    });
+                })(formatBtns[i]);
+            }
+
+            // 3. ОБРАБОТЧИКИ
+            document.getElementById('materialQuantity').addEventListener('input', updatePreview);
+            document.getElementById('otherFormatSelect').addEventListener('change', updatePreview);
+            document.getElementById('hasCaps').addEventListener('change', updatePreview);
+            document.getElementById('hasNonFormal').addEventListener('change', updatePreview);
+            document.getElementById('hasCardboard').addEventListener('change', updatePreview);
+
+            // ASTP
+            document.getElementById('hasASTP').addEventListener('change', function() {
+                var input = document.getElementById('astpQuantity');
+                input.disabled = !this.checked;
+                if (!this.checked) input.value = 0;
+                updatePreview();
             });
-            
-            setupEventListeners();
+            document.getElementById('astpQuantity').addEventListener('input', updatePreview);
+
+            // Кванты
+            document.getElementById('hasQuant').addEventListener('change', function() {
+                var input = document.getElementById('quantQuantity');
+                input.disabled = !this.checked;
+                if (!this.checked) input.value = 0;
+                updatePreview();
+            });
+            document.getElementById('quantQuantity').addEventListener('input', updatePreview);
+
+            // Коробки
+            document.getElementById('hasBoxes').addEventListener('change', function() {
+                var section = document.getElementById('boxesSection');
+                if (this.checked) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+                updatePreview();
+            });
+
+            // Коробки - все
+            var boxTypes = document.querySelectorAll('.box-type');
+            var boxQtys = document.querySelectorAll('.box-qty');
+            for (var k = 0; k < boxTypes.length; k++) {
+                boxTypes[k].addEventListener('change', updatePreview);
+                boxTypes[k].addEventListener('input', updatePreview);
+            }
+            for (var l = 0; l < boxQtys.length; l++) {
+                boxQtys[l].addEventListener('change', updatePreview);
+                boxQtys[l].addEventListener('input', updatePreview);
+            }
+
+            // Отправка
+            document.getElementById('orderForm').addEventListener('submit', submitOrder);
+
+            // 4. ПРОВЕРКА ПОДКЛЮЧЕНИЯ
             checkConnection();
+
+            // 5. ПЕРВЫЙ РАСЧЕТ
             updatePreview();
         });
-        
+
         // ============================================
         // ПРОВЕРКА ПОДКЛЮЧЕНИЯ
         // ============================================
         async function checkConnection() {
-            const statusEl = document.getElementById('connectionStatus');
-            const bar = document.getElementById('statusBar');
-            
+            var statusEl = document.getElementById('connectionStatus');
+            var bar = document.getElementById('statusBar');
+
             try {
-                const { data, error } = await supabase.from('materials').select('count').limit(1);
-                if (error) throw error;
+                var result = await supabase.from('materials').select('count').limit(1);
+                if (result.error) throw result.error;
                 statusEl.innerHTML = '✅ Подключено';
                 bar.className = 'status-bar';
                 console.log('✅ Подключение к Supabase успешно');
@@ -313,104 +691,75 @@
                 showToast('❌ Не удалось подключиться к базе данных', 'error');
             }
         }
-        
-        // ============================================
-        // ОБРАБОТЧИКИ
-        // ============================================
-        function setupEventListeners() {
-            document.getElementById('materialQuantity').addEventListener('input', updatePreview);
-            document.getElementById('otherFormatSelect').addEventListener('change', updatePreview);
-            document.getElementById('hasCaps').addEventListener('change', updatePreview);
-            document.getElementById('hasNonFormal').addEventListener('change', updatePreview);
-            document.getElementById('hasCardboard').addEventListener('change', updatePreview);
-            
-            document.getElementById('hasASTP').addEventListener('change', function() {
-                const input = document.getElementById('astpQuantity');
-                input.disabled = !this.checked;
-                if (!this.checked) input.value = 0;
-                updatePreview();
-            });
-            document.getElementById('astpQuantity').addEventListener('input', updatePreview);
-            
-            document.getElementById('hasQuant').addEventListener('change', function() {
-                const input = document.getElementById('quantQuantity');
-                input.disabled = !this.checked;
-                if (!this.checked) input.value = 0;
-                updatePreview();
-            });
-            document.getElementById('quantQuantity').addEventListener('input', updatePreview);
-            
-            document.getElementById('hasBoxes').addEventListener('change', function() {
-                document.getElementById('boxesSection').style.display = this.checked ? 'block' : 'none';
-                updatePreview();
-            });
-            
-            document.querySelectorAll('.box-type, .box-qty').forEach(el => {
-                el.addEventListener('change', updatePreview);
-                el.addEventListener('input', updatePreview);
-            });
-            
-            document.getElementById('orderForm').addEventListener('submit', submitOrder);
-        }
-        
+
         // ============================================
         // ДОБАВЛЕНИЕ КОРОБКИ
         // ============================================
         function addBoxRow() {
             boxRowCount++;
-            const grid = document.getElementById('boxesGrid');
-            const div = document.createElement('div');
+            var grid = document.getElementById('boxesGrid');
+
+            var div = document.createElement('div');
             div.className = 'box-item';
             div.id = 'boxRow' + boxRowCount;
             div.innerHTML = `
-                <label>📦</label>
-                <select class="box-type" id="boxType${boxRowCount}">
-                    <option value="MB_SMALL">Малый MB</option>
-                    <option value="AMAZON">Амазон</option>
-                    <option value="OZON">Ozon хороший</option>
-                    <option value="STAND_BOX">Для стоек</option>
-                    <option value="BOY_BIG">Пацанские большие</option>
-                </select>
-                <input type="number" class="box-qty" id="boxQty${boxRowCount}" min="0" step="1" value="0">
-                <span style="font-size:12px;color:#888;">шт</span>
-                <button type="button" class="btn btn-danger" onclick="removeBoxRow(${boxRowCount})">✕</button>
-            `;
+                    <label>📦</label>
+                    <select class="box-type" id="boxType${boxRowCount}">
+                        <option value="MB_SMALL">Малый MB</option>
+                        <option value="AMAZON">Амазон</option>
+                        <option value="OZON">Ozon хороший</option>
+                        <option value="STAND_BOX">Для стоек</option>
+                        <option value="BOY_BIG">Пацанские большие</option>
+                    </select>
+                    <input type="number" class="box-qty" id="boxQty${boxRowCount}" min="0" step="1" value="0">
+                    <span style="font-size:12px;color:#888;">шт</span>
+                    <button type="button" class="btn btn-danger" onclick="removeBoxRow(${boxRowCount})">✕</button>
+                `;
             grid.appendChild(div);
-            div.querySelectorAll('.box-type, .box-qty').forEach(el => {
-                el.addEventListener('change', updatePreview);
-                el.addEventListener('input', updatePreview);
-            });
+
+            var typeEl = div.querySelector('.box-type');
+            var qtyEl = div.querySelector('.box-qty');
+            typeEl.addEventListener('change', updatePreview);
+            typeEl.addEventListener('input', updatePreview);
+            qtyEl.addEventListener('change', updatePreview);
+            qtyEl.addEventListener('input', updatePreview);
+
             updatePreview();
         }
-        
+
         function removeBoxRow(id) {
-            const row = document.getElementById('boxRow' + id);
-            if (row) { row.remove(); updatePreview(); }
+            var row = document.getElementById('boxRow' + id);
+            if (row) {
+                row.remove();
+                updatePreview();
+            }
         }
-        
+
         // ============================================
         // РАСЧЕТ
         // ============================================
         function calculate() {
-            const quantity = parseInt(document.getElementById('materialQuantity').value) || 0;
-            const formatEl = document.querySelector('input[name="format"]:checked');
-            const format = formatEl ? formatEl.value : 'A6';
-            
-            let packageCode = PACKAGE_MAP[format];
-            if (format === 'other') packageCode = document.getElementById('otherFormatSelect').value;
-            
-            const hasCaps = document.getElementById('hasCaps').checked;
-            const hasNonFormal = document.getElementById('hasNonFormal').checked;
-            const hasCardboard = document.getElementById('hasCardboard').checked;
-            const hasASTP = document.getElementById('hasASTP').checked;
-            const astpQty = parseInt(document.getElementById('astpQuantity').value) || 0;
-            const hasQuant = document.getElementById('hasQuant').checked;
-            const quantQty = parseInt(document.getElementById('quantQuantity').value) || 0;
-            
-            const totalCapsOrNonFormal = (hasCaps ? quantity : 0) + (hasNonFormal ? quantity : 0);
-            const staples = totalCapsOrNonFormal * 2;
-            
-            const result = {
+            var quantity = parseInt(document.getElementById('materialQuantity').value) || 0;
+            var formatEl = document.querySelector('input[name="format"]:checked');
+            var format = formatEl ? formatEl.value : 'A6';
+
+            var packageCode = PACKAGE_MAP[format];
+            if (format === 'other') {
+                packageCode = document.getElementById('otherFormatSelect').value;
+            }
+
+            var hasCaps = document.getElementById('hasCaps').checked;
+            var hasNonFormal = document.getElementById('hasNonFormal').checked;
+            var hasCardboard = document.getElementById('hasCardboard').checked;
+            var hasASTP = document.getElementById('hasASTP').checked;
+            var astpQty = parseInt(document.getElementById('astpQuantity').value) || 0;
+            var hasQuant = document.getElementById('hasQuant').checked;
+            var quantQty = parseInt(document.getElementById('quantQuantity').value) || 0;
+
+            var totalCapsOrNonFormal = (hasCaps ? quantity : 0) + (hasNonFormal ? quantity : 0);
+            var staples = totalCapsOrNonFormal * 2;
+
+            var result = {
                 package: { code: packageCode, name: PACKAGE_NAMES[packageCode] || packageCode, quantity: quantity },
                 material: { quantity: quantity },
                 caps: hasCaps ? quantity : 0,
@@ -422,33 +771,44 @@
                 boxes: [],
                 totalItems: 0
             };
-            
+
             if (hasCardboard && quantity > 0) {
-                let cardboardQty = 0;
+                var cardboardQty = 0;
                 switch (format) {
-                    case 'A6': cardboardQty = quantity / 24; break;
-                    case 'A5': cardboardQty = quantity / 12; break;
-                    case 'A7': cardboardQty = quantity / 48; break;
-                    default: cardboardQty = quantity / 24;
+                    case 'A6':
+                        cardboardQty = quantity / 24;
+                        break;
+                    case 'A5':
+                        cardboardQty = quantity / 12;
+                        break;
+                    case 'A7':
+                        cardboardQty = quantity / 48;
+                        break;
+                    default:
+                        cardboardQty = quantity / 24;
                 }
                 result.cardboard = Math.round(cardboardQty * 1000) / 1000;
             }
-            
-            const hasBoxes = document.getElementById('hasBoxes').checked;
+
+            var hasBoxes = document.getElementById('hasBoxes').checked;
             if (hasBoxes) {
-                for (let i = 1; i <= boxRowCount; i++) {
-                    const typeEl = document.getElementById('boxType' + i);
-                    const qtyEl = document.getElementById('boxQty' + i);
+                for (var i = 1; i <= boxRowCount; i++) {
+                    var typeEl = document.getElementById('boxType' + i);
+                    var qtyEl = document.getElementById('boxQty' + i);
                     if (typeEl && qtyEl) {
-                        const qty = parseInt(qtyEl.value) || 0;
+                        var qty = parseInt(qtyEl.value) || 0;
                         if (qty > 0) {
-                            result.boxes.push({ code: typeEl.value, name: BOX_NAMES[typeEl.value] || typeEl.value, quantity: qty });
+                            result.boxes.push({
+                                code: typeEl.value,
+                                name: BOX_NAMES[typeEl.value] || typeEl.value,
+                                quantity: qty
+                            });
                         }
                     }
                 }
             }
-            
-            let total = 0;
+
+            var total = 0;
             if (result.package.quantity > 0) total++;
             if (result.caps > 0) total++;
             if (result.nonFormal > 0) total++;
@@ -458,63 +818,73 @@
             if (result.quant > 0) total++;
             if (result.boxes.length > 0) total += result.boxes.length;
             result.totalItems = total;
-            
+
             return result;
         }
-        
+
         // ============================================
         // ОБНОВЛЕНИЕ ПРЕДПРОСМОТРА
         // ============================================
         function updatePreview() {
-            const calc = calculate();
-            
-            const formatEl = document.querySelector('input[name="format"]:checked');
-            const format = formatEl ? formatEl.value : 'A6';
-            const formatLabels = { 'A6': 'А6', 'A5': 'А5', 'A7': 'А7', 'other': 'Иной' };
-            const formatLabel = formatLabels[format] || format;
-            
-            const packageName = calc.package.name || '—';
+            var calc = calculate();
+
+            var formatEl = document.querySelector('input[name="format"]:checked');
+            var format = formatEl ? formatEl.value : 'A6';
+            var formatLabels = { 'A6': 'А6', 'A5': 'А5', 'A7': 'А7', 'other': 'Иной' };
+            var formatLabel = formatLabels[format] || format;
+
+            var packageName = calc.package.name || '—';
             document.getElementById('previewPackageLabel').textContent = packageName;
-            document.getElementById('previewPackage').textContent = calc.package.quantity > 0 ? calc.package.quantity + ' шт (' + formatLabel + ')' : '—';
-            
+            document.getElementById('previewPackage').textContent = calc.package.quantity > 0 ? calc.package.quantity +
+                ' шт (' + formatLabel + ')' : '—';
+
             document.getElementById('previewCaps').textContent = calc.caps > 0 ? calc.caps + ' шт' : '—';
             document.getElementById('previewNonFormal').textContent = calc.nonFormal > 0 ? calc.nonFormal + ' шт' : '—';
             document.getElementById('previewStaples').textContent = calc.staples > 0 ? calc.staples + ' шт' : '—';
             document.getElementById('previewCardboard').textContent = calc.cardboard > 0 ? calc.cardboard + ' шт' : '—';
             document.getElementById('previewASTP').textContent = calc.astp > 0 ? calc.astp + ' шт' : '—';
             document.getElementById('previewQuant').textContent = calc.quant > 0 ? calc.quant + ' шт' : '—';
-            
-            const boxesContainer = document.getElementById('previewBoxes');
+
+            var boxesContainer = document.getElementById('previewBoxes');
             if (calc.boxes.length === 0) {
-                boxesContainer.innerHTML = '<div class="calc-row"><span class="calc-label" style="color:#555;">Нет коробок</span><span class="calc-value" style="color:#555;">—</span></div>';
+                boxesContainer.innerHTML =
+                    '<div class="calc-row"><span class="calc-label" style="color:#555;">Нет коробок</span><span class="calc-value" style="color:#555;">—</span></div>';
             } else {
-                boxesContainer.innerHTML = calc.boxes.map(function(box) {
-                    return '<div class="calc-row"><span class="calc-label">' + box.name + '</span><span class="calc-value">' + box.quantity + ' шт</span></div>';
-                }).join('');
+                var html = '';
+                for (var i = 0; i < calc.boxes.length; i++) {
+                    html += '<div class="calc-row"><span class="calc-label">' + calc.boxes[i].name +
+                        '</span><span class="calc-value">' + calc.boxes[i].quantity + ' шт</span></div>';
+                }
+                boxesContainer.innerHTML = html;
             }
-            
+
             document.getElementById('previewTotal').textContent = calc.totalItems + ' позиций';
         }
-        
+
         // ============================================
         // ОТПРАВКА ЗАКАЗА
         // ============================================
         async function submitOrder(event) {
             event.preventDefault();
-            const submitBtn = document.getElementById('submitBtn');
+            var submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Отправка...';
-            
+
             try {
-                const calc = calculate();
-                const boxes = calc.boxes.map(function(box) { return { type: box.code, quantity: box.quantity }; });
-                
-                const formatEl = document.querySelector('input[name="format"]:checked');
-                const format = formatEl ? formatEl.value : 'A6';
-                let packageCode = PACKAGE_MAP[format];
-                if (format === 'other') packageCode = document.getElementById('otherFormatSelect').value;
-                
-                const orderData = {
+                var calc = calculate();
+                var boxes = [];
+                for (var i = 0; i < calc.boxes.length; i++) {
+                    boxes.push({ type: calc.boxes[i].code, quantity: calc.boxes[i].quantity });
+                }
+
+                var formatEl = document.querySelector('input[name="format"]:checked');
+                var format = formatEl ? formatEl.value : 'A6';
+                var packageCode = PACKAGE_MAP[format];
+                if (format === 'other') {
+                    packageCode = document.getElementById('otherFormatSelect').value;
+                }
+
+                var orderData = {
                     order_number: document.getElementById('orderNumber').value.trim(),
                     order_date: document.getElementById('orderDate').value,
                     material_type: document.getElementById('materialType').value,
@@ -533,29 +903,29 @@
                     boxes: boxes,
                     calculation: calc
                 };
-                
+
                 if (!orderData.order_number) {
                     showToast('❌ Введите номер заказа', 'error');
                     submitBtn.disabled = false;
                     submitBtn.textContent = '✅ Отгрузить';
                     return;
                 }
-                
+
                 if (orderData.material_quantity < 1 && !orderData.has_boxes) {
                     showToast('❌ Укажите количество материала или коробки', 'error');
                     submitBtn.disabled = false;
                     submitBtn.textContent = '✅ Отгрузить';
                     return;
                 }
-                
+
                 console.log('📦 Отправка заказа:', orderData);
-                
-                const { data, error } = await supabase.from('orders').insert([orderData]).select();
-                if (error) throw error;
-                
+
+                var result = await supabase.from('orders').insert([orderData]).select();
+                if (result.error) throw result.error;
+
                 showToast('✅ Заказ ' + orderData.order_number + ' успешно отгружен!', 'success');
-                console.log('✅ Заказ сохранен:', data);
-                
+                console.log('✅ Заказ сохранен:', result.data);
+
             } catch (error) {
                 console.error('❌ Ошибка:', error);
                 showToast('❌ Ошибка: ' + error.message, 'error');
@@ -564,19 +934,25 @@
                 submitBtn.textContent = '✅ Отгрузить';
             }
         }
-        
+
         // ============================================
         // ВСПОМОГАТЕЛЬНЫЕ
         // ============================================
         function resetForm() {
             document.getElementById('orderNumber').value = '';
             document.getElementById('materialQuantity').value = 1;
-            
-            document.querySelectorAll('.format-btn').forEach(function(b) { b.classList.remove('active'); });
-            document.querySelector('.format-btn input[value="A6"]').closest('.format-btn').classList.add('active');
-            document.querySelector('input[name="format"][value="A6"]').checked = true;
+
+            var allBtns = document.querySelectorAll('.format-btn');
+            for (var i = 0; i < allBtns.length; i++) {
+                allBtns[i].classList.remove('active');
+            }
+            var firstBtn = document.querySelector('.format-btn input[value="A6"]');
+            if (firstBtn) {
+                firstBtn.closest('.format-btn').classList.add('active');
+                firstBtn.checked = true;
+            }
             document.getElementById('otherFormatGroup').style.display = 'none';
-            
+
             document.getElementById('hasCaps').checked = false;
             document.getElementById('hasNonFormal').checked = false;
             document.getElementById('hasCardboard').checked = false;
@@ -588,24 +964,24 @@
             document.getElementById('quantQuantity').disabled = true;
             document.getElementById('hasBoxes').checked = false;
             document.getElementById('boxesSection').style.display = 'none';
-            
-            for (let i = 1; i <= 3; i++) {
-                const qtyEl = document.getElementById('boxQty' + i);
+
+            for (var j = 1; j <= 3; j++) {
+                var qtyEl = document.getElementById('boxQty' + j);
                 if (qtyEl) qtyEl.value = 0;
             }
-            for (let i = 4; i <= boxRowCount; i++) {
-                const row = document.getElementById('boxRow' + i);
+            for (var k = 4; k <= boxRowCount; k++) {
+                var row = document.getElementById('boxRow' + k);
                 if (row) row.remove();
             }
             boxRowCount = 3;
-            
+
             updatePreview();
             showToast('🔄 Форма очищена', 'info');
         }
-        
+
         function showToast(message, type) {
             type = type || 'info';
-            const toast = document.getElementById('toast');
+            var toast = document.getElementById('toast');
             toast.textContent = message;
             toast.className = 'toast ' + type;
             setTimeout(function() { toast.classList.add('show'); }, 10);
