@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Ввод остатков</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header-row .left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header-row .left h1 {
+            margin: 0;
+        }
+        .status-bar {
+            background: #e8f5e9;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #2e7d32;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-bar .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #43a047;
+        }
+        .status-bar.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .status-bar.error .status-dot {
+            background: #e53935;
+        }
+        .filters {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .filters input,
+        .filters select {
+            padding: 8px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .filters input:focus,
+        .filters select:focus {
+            outline: none;
+            border-color: #4a90d9;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid #e8e8e8;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        thead {
+            background: #f8f9fa;
+        }
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 700;
+            color: #555;
+            border-bottom: 2px solid #e8e8e8;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            z-index: 10;
+        }
+        td {
+            padding: 10px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+        tr:hover td {
+            background: #fafbfc;
+        }
+        .material-name {
+            font-weight: 500;
+            color: #1a1a2e;
+        }
+        .material-code {
+            color: #888;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        .category-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .category-badge.постоянные {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        .category-badge.поддоны {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        .category-badge.коробки {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .category-badge.склад {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+        .balance-input {
+            width: 120px;
+            padding: 6px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            text-align: right;
+            transition: border-color 0.2s;
+        }
+        .balance-input:focus {
+            outline: none;
+            border-color: #4a90d9;
+        }
+        .balance-input.changed {
+            border-color: #ff9800;
+            background: #fff8e1;
+        }
+        .balance-input.saved {
+            border-color: #43a047;
+            background: #e8f5e9;
+        }
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: #4a90d9;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #357abd;
+            transform: translateY(-1px);
+        }
+        .btn-success {
+            background: #43a047;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #388e3c;
+            transform: translateY(-1px);
+        }
+        .btn-success:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: #e8e8e8;
+            color: #555;
+        }
+        .btn-secondary:hover {
+            background: #ddd;
+        }
+        .btn-danger {
+            background: #e53935;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c62828;
+        }
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 13px;
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        .stat-card .label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            max-width: 400px;
+            z-index: 1000;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.success {
+            background: #43a047;
+        }
+        .toast.error {
+            background: #e53935;
+        }
+        .toast.info {
+            background: #4a90d9;
+        }
+        .toast.warning {
+            background: #ff9800;
+        }
+        .empty-row td {
+            padding: 40px;
+            text-align: center;
+            color: #888;
+        }
+        .date-input {
+            padding: 6px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .date-input:focus {
+            outline: none;
+            border-color: #4a90d9;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 16px;
+            }
+            .header-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filters {
+                flex-direction: column;
+            }
+            .filters input,
+            .filters select {
+                width: 100%;
+            }
+            .balance-input {
+                width: 80px;
+            }
+            .stats {
+                grid-template-columns: 1fr 1fr;
+            }
+            .actions {
+                flex-direction: column;
+            }
+            .actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-row">
+            <div class="left">
+                <h1>📊 Ввод остатков</h1>
+                <span class="status-bar" id="statusBar">
+                    <span class="status-dot"></span>
+                    <span id="connectionStatus">⏳ Проверка...</span>
+                </span>
+            </div>
+            <div>
+                <label style="font-size:13px;color:#888;margin-right:8px;">Дата остатка:</label>
+                <input type="date" class="date-input" id="balanceDate">
+            </div>
+        </div>
+        <p class="subtitle">Введите актуальные остатки материалов. Изменения выделяются оранжевым цветом.</p>
+
+        <div class="stats" id="statsContainer">
+            <div class="stat-card">
+                <div class="number" id="totalMaterials">0</div>
+                <div class="label">Всего материалов</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="changedCount">0</div>
+                <div class="label">Изменено</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="savedCount">0</div>
+                <div class="label">Сохранено</div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="🔍 Поиск по названию..." style="flex:1;min-width:200px;">
+            <select id="categoryFilter">
+                <option value="">Все категории</option>
+                <option value="ПОСТОЯННЫЕ">Постоянные</option>
+                <option value="Поддоны">Поддоны</option>
+                <option value="Коробки">Коробки</option>
+                <option value="СКЛАД">Склад</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="loadBalances()">🔄 Обновить</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:30px;">#</th>
+                        <th style="min-width:200px;">Материал</th>
+                        <th style="min-width:100px;">Категория</th>
+                        <th style="min-width:140px;">Текущий остаток</th>
+                        <th style="min-width:140px;">Новый остаток</th>
+                        <th style="width:100px;">Действие</th>
+                    </tr>
+                </thead>
+                <tbody id="materialsBody">
+                    <tr class="empty-row">
+                        <td colspan="6">Загрузка данных...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-success" id="saveAllBtn" onclick="saveAllBalances()">💾 Сохранить все изменения</button>
+            <button class="btn btn-secondary" onclick="resetAllInputs()">↩️ Сбросить все</button>
+            <button class="btn btn-secondary" onclick="exportToCSV()">📤 Экспорт CSV</button>
+            <button class="btn btn-primary" onclick="window.location.href='index.html'">📦 На главную</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============================================
+        // НАСТРОЙКА SUPABASE
+        // ============================================
+        var SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
+        var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
+
+        if (typeof window.supabaseClient === 'undefined') {
+            window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+        var supabase = window.supabaseClient;
+
+        // ============================================
+        // ПЕРЕМЕННЫЕ
+        // ============================================
+        var materials = [];
+        var changedIds = {};
+        var savedIds = {};
+
+        // ============================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Устанавливаем сегодняшнюю дату
+            var today = new Date();
+            var day = String(today.getDate()).padStart(2, '0');
+            var month = String(today.getMonth() + 1).padStart(2, '0');
+            var year = today.getFullYear();
+            document.getElementById('balanceDate').value = year + '-' + month + '-' + day;
+
+            checkConnection();
+            loadBalances();
+
+            // Поиск и фильтр
+            document.getElementById('searchInput').addEventListener('input', renderTable);
+            document.getElementById('categoryFilter').addEventListener('change', renderTable);
+        });
+
+        // ============================================
+        // ПРОВЕРКА ПОДКЛЮЧЕНИЯ
+        // ============================================
+        function checkConnection() {
+            var statusEl = document.getElementById('connectionStatus');
+            var bar = document.getElementById('statusBar');
+
+            supabase.from('materials').select('count').limit(1)
+                .then(function(result) {
+                    if (result.error) throw result.error;
+                    statusEl.textContent = '✅ Подключено';
+                    bar.className = 'status-bar';
+                    console.log('✅ Подключение к Supabase успешно');
+                })
+                .catch(function(error) {
+                    console.error('❌ Ошибка подключения:', error);
+                    statusEl.textContent = '❌ Ошибка';
+                    bar.className = 'status-bar error';
+                    showToast('❌ Не удалось подключиться к базе данных', 'error');
+                });
+        }
+
+        // ============================================
+        // ЗАГРУЗКА ОСТАТКОВ
+        // ============================================
+        function loadBalances() {
+            var tbody = document.getElementById('materialsBody');
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="6">⏳ Загрузка...</td></tr>';
+
+            // Получаем все материалы
+            supabase.from('materials').select('*').order('category', { ascending: true }).order('name', { ascending: true })
+                .then(function(result) {
+                    if (result.error) throw result.error;
+                    materials = result.data;
+
+                    // Получаем текущие остатки
+                    return supabase.from('movements')
+                        .select('material_id, quantity, movement_type')
+                        .order('created_at', { ascending: false });
+                })
+                .then(function(result) {
+                    if (result.error) throw result.error;
+
+                    // Группируем остатки по material_id
+                    var balances = {};
+                    for (var i = 0; i < result.data.length; i++) {
+                        var row = result.data[i];
+                        if (!balances[row.material_id]) {
+                            balances[row.material_id] = 0;
+                        }
+                        if (row.movement_type === 'INCOME') {
+                            balances[row.material_id] += row.quantity;
+                        } else {
+                            balances[row.material_id] -= row.quantity;
+                        }
+                    }
+
+                    // Добавляем остатки к материалам
+                    for (var j = 0; j < materials.length; j++) {
+                        materials[j].current_balance = balances[materials[j].id] || 0;
+                    }
+
+                    renderTable();
+                    updateStats();
+                    showToast('✅ Данные загружены', 'success');
+                })
+                .catch(function(error) {
+                    console.error('❌ Ошибка загрузки:', error);
+                    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">❌ Ошибка загрузки данных</td></tr>';
+                    showToast('❌ Ошибка загрузки: ' + error.message, 'error');
+                });
+        }
+
+        // ============================================
+        // ОТОБРАЖЕНИЕ ТАБЛИЦЫ
+        // ============================================
+        function renderTable() {
+            var search = document.getElementById('searchInput').value.toLowerCase();
+            var category = document.getElementById('categoryFilter').value;
+            var tbody = document.getElementById('materialsBody');
+
+            var filtered = materials.filter(function(m) {
+                var matchName = m.name.toLowerCase().includes(search);
+                var matchCategory = !category || m.category === category;
+                return matchName && matchCategory;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr class="empty-row"><td colspan="6">🔍 Ничего не найдено</td></tr>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < filtered.length; i++) {
+                var m = filtered[i];
+                var isChanged = changedIds[m.id] !== undefined;
+                var isSaved = savedIds[m.id] !== undefined;
+                var newValue = isChanged ? changedIds[m.id] : m.current_balance;
+                var rowNum = i + 1;
+
+                var categoryClass = (m.category || '').toLowerCase();
+                var categoryDisplay = m.category || '—';
+
+                html += '<tr>' +
+                    '<td>' + rowNum + '</td>' +
+                    '<td><span class="material-name">' + m.name + '</span><br><span class="material-code">' + m.code +
+                    '</span></td>' +
+                    '<td><span class="category-badge ' + categoryClass + '">' + categoryDisplay + '</span></td>' +
+                    '<td><strong>' + formatNumber(m.current_balance) + '</strong> ' + (m.unit || 'шт') + '</td>' +
+                    '<td>' +
+                    '<input type="number" class="balance-input" id="balance_' + m.id + '" ' +
+                    'value="' + newValue + '" ' +
+                    'step="0.001" ' +
+                    'onchange="onBalanceChange(\'' + m.id + '\', this.value)" ' +
+                    'onfocus="this.select()">' +
+                    '</td>' +
+                    '<td>' +
+                    (isChanged ? '<button class="btn btn-success btn-sm" onclick="saveSingleBalance(\'' + m.id +
+                        '\')">💾</button>' : '') +
+                    (isChanged ? '<button class="btn btn-secondary btn-sm" onclick="resetSingleBalance(\'' + m.id +
+                        '\')" style="margin-left:4px;">↩️</button>' : '') +
+                    '</td>' +
+                    '</tr>';
+            }
+
+            tbody.innerHTML = html;
+            updateStats();
+        }
+
+        // ============================================
+        // ФОРМАТИРОВАНИЕ ЧИСЕЛ
+        // ============================================
+        function formatNumber(num) {
+            if (num === undefined || num === null) return '0';
+            if (Number.isInteger(num)) return num.toString();
+            return num.toFixed(3).replace(/\.?0+$/, '');
+        }
+
+        // ============================================
+        // ОБНОВЛЕНИЕ СТАТИСТИКИ
+        // ============================================
+        function updateStats() {
+            document.getElementById('totalMaterials').textContent = materials.length;
+            var changed = Object.keys(changedIds).length;
+            document.getElementById('changedCount').textContent = changed;
+            document.getElementById('savedCount').textContent = Object.keys(savedIds).length;
+        }
+
+        // ============================================
+        // ИЗМЕНЕНИЕ ОСТАТКА
+        // ============================================
+        function onBalanceChange(id, value) {
+            var numValue = parseFloat(value);
+            if (isNaN(numValue)) return;
+
+            var material = materials.find(function(m) { return m.id === id; });
+            if (!material) return;
+
+            if (numValue === material.current_balance) {
+                delete changedIds[id];
+            } else {
+                changedIds[id] = numValue;
+            }
+
+            // Убираем статус сохраненного
+            delete savedIds[id];
+
+            // Обновляем внешний вид поля
+            var input = document.getElementById('balance_' + id);
+            if (input) {
+                if (changedIds[id] !== undefined) {
+                    input.className = 'balance-input changed';
+                } else {
+                    input.className = 'balance-input';
+                }
+            }
+
+            renderTable();
+            updateStats();
+        }
+
+        // ============================================
+        // СОХРАНЕНИЕ ОДНОГО ОСТАТКА
+        // ============================================
+        function saveSingleBalance(id) {
+            if (changedIds[id] === undefined) {
+                showToast('⚠️ Нет изменений для сохранения', 'warning');
+                return;
+            }
+
+            var newBalance = changedIds[id];
+            var material = materials.find(function(m) { return m.id === id; });
+            if (!material) return;
+
+            var currentBalance = material.current_balance;
+            var diff = newBalance - currentBalance;
+
+            if (diff === 0) {
+                delete changedIds[id];
+                renderTable();
+                updateStats();
+                return;
+            }
+
+            var date = document.getElementById('balanceDate').value;
+            if (!date) {
+                showToast('❌ Укажите дату остатка', 'error');
+                return;
+            }
+
+            // Создаем корректирующее движение
+            var movementType = diff > 0 ? 'INCOME' : 'EXPENSE';
+
+            supabase.from('movements').insert([{
+                material_id: id,
+                movement_date: date,
+                movement_type: movementType,
+                quantity: Math.abs(diff),
+                source: 'Ручная корректировка остатка',
+                notes: 'Корректировка остатка с ' + currentBalance + ' на ' + newBalance
+            }]).select()
+            .then(function(result) {
+                if (result.error) throw result.error;
+
+                // Обновляем текущий остаток
+                material.current_balance = newBalance;
+                changedIds[id] = undefined;
+                savedIds[id] = true;
+
+                renderTable();
+                updateStats();
+                showToast('✅ Остаток обновлен: ' + material.name, 'success');
+            })
+            .catch(function(error) {
+                console.error('❌ Ошибка сохранения:', error);
+                showToast('❌ Ошибка: ' + error.message, 'error');
+            });
+        }
+
+        // ============================================
+        // СОХРАНЕНИЕ ВСЕХ ИЗМЕНЕНИЙ
+        // ============================================
+        function saveAllBalances() {
+            var ids = Object.keys(changedIds);
+            if (ids.length === 0) {
+                showToast('⚠️ Нет изменений для сохранения', 'warning');
+                return;
+            }
+
+            var btn = document.getElementById('saveAllBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Сохранение...';
+
+            var date = document.getElementById('balanceDate').value;
+            if (!date) {
+                showToast('❌ Укажите дату остатка', 'error');
+                btn.disabled = false;
+                btn.textContent = '💾 Сохранить все изменения';
+                return;
+            }
+
+            var promises = [];
+            var saved = [];
+
+            for (var i = 0; i < ids.length; i++) {
+                var id = ids[i];
+                var newBalance = changedIds[id];
+                var material = materials.find(function(m) { return m.id === id; });
+                if (!material) continue;
+
+                var currentBalance = material.current_balance;
+                var diff = newBalance - currentBalance;
+
+                if (diff === 0) {
+                    delete changedIds[id];
+                    continue;
+                }
+
+                var movementType = diff > 0 ? 'INCOME' : 'EXPENSE';
+
+                var promise = supabase.from('movements').insert([{
+                    material_id: id,
+                    movement_date: date,
+                    movement_type: movementType,
+                    quantity: Math.abs(diff),
+                    source: 'Ручная корректировка остатка',
+                    notes: 'Корректировка остатка с ' + currentBalance + ' на ' + newBalance
+                }]).select()
+                .then(function(result, matId, newBal) {
+                    return function() {
+                        if (result.error) throw result.error;
+                        var mat = materials.find(function(m) { return m.id === matId; });
+                        if (mat) mat.current_balance = newBal;
+                        delete changedIds[matId];
+                        savedIds[matId] = true;
+                        saved.push(matId);
+                        return true;
+                    };
+                }(result, id, newBalance));
+
+                promises.push(promise);
+            }
+
+            Promise.all(promises)
+                .then(function() {
+                    renderTable();
+                    updateStats();
+                    showToast('✅ Сохранено ' + saved.length + ' изменений', 'success');
+                    btn.disabled = false;
+                    btn.textContent = '💾 Сохранить все изменения';
+                })
+                .catch(function(error) {
+                    console.error('❌ Ошибка сохранения:', error);
+                    showToast('❌ Ошибка: ' + error.message, 'error');
+                    btn.disabled = false;
+                    btn.textContent = '💾 Сохранить все изменения';
+                });
+        }
+
+        // ============================================
+        // СБРОС
+        // ============================================
+        function resetSingleBalance(id) {
+            delete changedIds[id];
+            delete savedIds[id];
+            renderTable();
+            updateStats();
+        }
+
+        function resetAllInputs() {
+            if (Object.keys(changedIds).length === 0) {
+                showToast('⚠️ Нет изменений для сброса', 'warning');
+                return;
+            }
+
+            if (!confirm('Сбросить все несохраненные изменения?')) return;
+
+            changedIds = {};
+            savedIds = {};
+            renderTable();
+            updateStats();
+            showToast('🔄 Все изменения сброшены', 'info');
+        }
+
+        // ============================================
+        // ЭКСПОРТ CSV
+        // ============================================
+        function exportToCSV() {
+            var csv = 'Код,Название,Категория,Текущий остаток,Ед.изм.\n';
+            for (var i = 0; i < materials.length; i++) {
+                var m = materials[i];
+                csv += '"' + m.code + '","' + m.name + '","' + (m.category || '') + '","' + m.current_balance + '","' + (m
+                    .unit || 'шт') + '"\n';
+            }
+
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'остатки_' + document.getElementById('balanceDate').value + '.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
+
+            showToast('📤 CSV файл скачан', 'success');
+        }
+
+        // ============================================
+        // TOAST УВЕДОМЛЕНИЯ
+        // ============================================
+        function showToast(message, type) {
+            type = type || 'info';
+            var toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            setTimeout(function() { toast.classList.add('show'); }, 10);
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(function() { toast.classList.remove('show'); }, 3000);
+        }
+    </script>
+</body>
+</html>
