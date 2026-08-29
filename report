@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>📊 Отчеты</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" />
+
+    <style>
+        /* ===== ТЕ ЖЕ СТИЛИ APPLE ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1100px;
+            width: 100%;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 24px 0;
+            border-bottom: 1px solid #e5e5ea;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            color: #1d1d1f;
+        }
+        .logo span {
+            font-weight: 300;
+            color: #86868b;
+        }
+
+        .nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .nav a {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1d1d1f;
+            text-decoration: none;
+            transition: all 0.2s;
+            background: #f5f5f7;
+        }
+        .nav a:hover {
+            background: #e5e5ea;
+        }
+        .nav a.active {
+            background: #007aff;
+            color: #ffffff;
+        }
+
+        .status-badge {
+            font-size: 13px;
+            color: #34c759;
+            background: #e8f9ed;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .status-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34c759;
+            display: inline-block;
+        }
+        .status-badge.error {
+            color: #ff3b30;
+            background: #fde8e8;
+        }
+        .status-badge.error .dot {
+            background: #ff3b30;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+        }
+        .page-subtitle {
+            font-size: 17px;
+            color: #86868b;
+            margin-bottom: 28px;
+        }
+
+        /* ===== КАРТОЧКА ФИЛЬТРОВ ===== */
+        .filter-card {
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 24px 28px;
+            border: 1px solid #e5e5ea;
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 16px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .filter-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 10px 14px;
+            border: 1.5px solid #d2d2d6;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            background: #ffffff;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+        }
+
+        .btn-primary {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 12px;
+            background: #007aff;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 48px;
+            white-space: nowrap;
+        }
+        .btn-primary:hover {
+            background: #0066d9;
+        }
+
+        .btn-success {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 12px;
+            background: #34c759;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 48px;
+            white-space: nowrap;
+        }
+        .btn-success:hover {
+            background: #28a745;
+        }
+        .btn-success:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-outline {
+            padding: 10px 20px;
+            border: 1.5px solid #d2d2d6;
+            border-radius: 12px;
+            background: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1d1d1f;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 48px;
+            white-space: nowrap;
+        }
+        .btn-outline:hover {
+            border-color: #007aff;
+            background: #f5f9ff;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* ===== ТАБЛИЦА ОТЧЕТА ===== */
+        .table-wrapper {
+            background: #ffffff;
+            border-radius: 18px;
+            border: 1px solid #e5e5ea;
+            overflow: hidden;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead {
+            background: #f8f8fa;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #86868b;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 1px solid #e5e5ea;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f2;
+            color: #1d1d1f;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .material-name {
+            font-weight: 500;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .category-badge.постоянные {
+            background: #e8f9ed;
+            color: #34c759;
+        }
+        .category-badge.поддоны {
+            background: #fff5e6;
+            color: #ff9500;
+        }
+        .category-badge.коробки {
+            background: #e8f0fe;
+            color: #007aff;
+        }
+        .category-badge.склад {
+            background: #f5e6ff;
+            color: #af52de;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .font-mono {
+            font-family: monospace;
+        }
+        .text-green {
+            color: #34c759;
+        }
+        .text-red {
+            color: #ff3b30;
+        }
+        .text-gray {
+            color: #86868b;
+        }
+        .fw-bold {
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #86868b;
+        }
+
+        /* ===== ПРОГРЕСС-БАР ПРИ ЭКСПОРТЕ ===== */
+        .progress-bar {
+            display: none;
+            margin-top: 12px;
+            background: #e5e5ea;
+            border-radius: 20px;
+            height: 6px;
+            overflow: hidden;
+            width: 100%;
+            max-width: 400px;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            width: 0%;
+            background: #007aff;
+            border-radius: 20px;
+            transition: width 0.3s ease;
+        }
+        .progress-bar.show {
+            display: block;
+        }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            padding: 16px 24px;
+            border-radius: 16px;
+            background: #1d1d1f;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            max-width: 420px;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.success {
+            background: #34c759;
+        }
+        .toast.error {
+            background: #ff3b30;
+        }
+        .toast.info {
+            background: #007aff;
+        }
+
+        /* ===== АДАПТИВ ===== */
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .nav {
+                width: 100%;
+                justify-content: flex-start;
+            }
+            .nav a {
+                font-size: 13px;
+                padding: 6px 14px;
+            }
+            .filter-card {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 16px 18px;
+            }
+            .filter-actions {
+                flex-direction: column;
+            }
+            .filter-actions .btn-primary,
+            .filter-actions .btn-success,
+            .filter-actions .btn-outline {
+                width: 100%;
+                justify-content: center;
+            }
+            .page-title {
+                font-size: 22px;
+            }
+            .container {
+                padding: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            th,
+            td {
+                padding: 8px 10px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- ===== ХЕДЕР ===== -->
+        <header class="header">
+            <div class="logo">📦 <span>Учет материалов</span></div>
+            <div class="nav">
+                <a href="index.html">Отгрузка</a>
+                <a href="dashboard.html">Дашборд</a>
+                <a href="balances.html">Остатки</a>
+                <a href="reports.html" class="active">Отчеты</a>
+            </div>
+            <div class="status-badge" id="statusBar">
+                <span class="dot"></span>
+                <span id="connectionStatus">Подключение...</span>
+            </div>
+        </header>
+
+        <!-- ===== ЗАГОЛОВОК ===== -->
+        <h1 class="page-title">📊 Отчет за месяц</h1>
+        <p class="page-subtitle">Сформируйте отчет и экспортируйте в Google Sheets</p>
+
+        <!-- ===== ФИЛЬТРЫ ===== -->
+        <div class="filter-card">
+            <div class="filter-group">
+                <label for="reportMonth">📅 Месяц</label>
+                <input type="month" id="reportMonth" />
+            </div>
+            <div class="filter-group">
+                <label for="reportCategory">📂 Категория</label>
+                <select id="reportCategory">
+                    <option value="">Все категории</option>
+                    <option value="ПОСТОЯННЫЕ">Постоянные</option>
+                    <option value="Поддоны">Поддоны</option>
+                    <option value="Коробки">Коробки</option>
+                    <option value="СКЛАД">Склад</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button class="btn-primary" onclick="generateReport()">🔄 Сформировать</button>
+                <button class="btn-success" id="exportBtn" onclick="exportToGoogleSheets()">
+                    📤 Экспорт в Google Sheets
+                </button>
+                <button class="btn-outline" onclick="downloadCSV()">📥 Скачать CSV</button>
+            </div>
+        </div>
+
+        <!-- ===== ПРОГРЕСС ===== -->
+        <div class="progress-bar" id="progressBar">
+            <div class="fill" id="progressFill"></div>
+        </div>
+
+        <!-- ===== ТАБЛИЦА ОТЧЕТА ===== -->
+        <div class="table-wrapper">
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Материал</th>
+                            <th>Категория</th>
+                            <th class="text-right">Остаток на начало</th>
+                            <th class="text-right">➕ Приход</th>
+                            <th class="text-right">➖ Расход</th>
+                            <th class="text-right">Остаток на конец</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportBody">
+                        <tr>
+                            <td colspan="7" class="empty-state">
+                                ⏳ Выберите месяц и нажмите «Сформировать»
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ===== ИТОГО ===== -->
+        <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:24px;flex-wrap:wrap;font-size:15px;color:#86868b;" id="totalsRow">
+            <span>📦 Всего материалов: <strong id="totalMaterials" style="color:#1d1d1f;">0</strong></span>
+            <span>➕ Приход: <strong id="totalIncome" style="color:#34c759;">0</strong></span>
+            <span>➖ Расход: <strong id="totalExpense" style="color:#ff3b30;">0</strong></span>
+        </div>
+
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast" id="toast"></div>
+
+    <!-- ========================================== -->
+    <!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ -->
+    <!-- ========================================== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
+    <script>
+        // ============================================
+        // НАСТРОЙКА SUPABASE
+        // ============================================
+        var SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
+        var SUPABASE_ANON_KEY =
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
+
+        if (typeof window.supabaseClient === 'undefined') {
+            window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+        var supabase = window.supabaseClient;
+
+        // ============================================
+        // ПЕРЕМЕННЫЕ
+        // ============================================
+        var reportData = [];
+        var allMaterials = [];
+
+        // ============================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Устанавливаем текущий месяц
+            var today = new Date();
+            var month = String(today.getMonth() + 1).padStart(2, '0');
+            var year = today.getFullYear();
+            document.getElementById('reportMonth').value = year + '-' + month;
+
+            checkConnection();
+            loadMaterials();
+        });
+
+        // ============================================
+        // ПРОВЕРКА ПОДКЛЮЧЕНИЯ
+        // ============================================
+        function checkConnection() {
+            var statusEl = document.getElementById('connectionStatus');
+            var bar = document.getElementById('statusBar');
+
+            supabase.from('materials').select('count').limit(1)
+                .then(function(result) {
+                    if (result.error) throw result.error;
+                    statusEl.textContent = 'Подключено';
+                    bar.className = 'status-badge';
+                })
+                .catch(function(error) {
+                    console.error('Ошибка:', error);
+                    statusEl.textContent = 'Ошибка';
+                    bar.className = 'status-badge error';
+                });
+        }
+
+        // ============================================
+        // ЗАГРУЗКА МАТЕРИАЛОВ
+        // ============================================
+        function loadMaterials() {
+            supabase.from('materials').select('*').order('category').order('name')
+                .then(function(result) {
+                    if (result.error) throw result.error;
+                    allMaterials = result.data;
+                })
+                .catch(function(error) {
+                    console.error('Ошибка загрузки материалов:', error);
+                });
+        }
+
+        // ============================================
+        // ФОРМИРОВАНИЕ ОТЧЕТА
+        // ============================================
+        function generateReport() {
+            var month = document.getElementById('reportMonth').value;
+            var category = document.getElementById('reportCategory').value;
+
+            if (!month) {
+                showToast('❌ Выберите месяц', 'error');
+                return;
+            }
+
+            var tbody = document.getElementById('reportBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">⏳ Загрузка...</td></tr>';
+
+            var year = parseInt(month.split('-')[0]);
+            var monthNum = parseInt(month.split('-')[1]);
+
+            // Первый день месяца
+            var startDate = new Date(year, monthNum - 1, 1);
+            // Последний день месяца
+            var endDate = new Date(year, monthNum, 0);
+
+            var startStr = startDate.toISOString().split('T')[0];
+            var endStr = endDate.toISOString().split('T')[0];
+
+            // Получаем движения за месяц
+            supabase.from('movements')
+                .select('material_id, movement_date, movement_type, quantity')
+                .gte('movement_date', startStr)
+                .lte('movement_date', endStr)
+                .then(function(result) {
+                    if (result.error) throw result.error;
+
+                    var movements = result.data;
+
+                    // Получаем начальные остатки (до начала месяца)
+                    return supabase.from('movements')
+                        .select('material_id, movement_type, quantity')
+                        .lt('movement_date', startStr);
+                })
+                .then(function(result) {
+                    if (result.error) throw result.error;
+
+                    // Считаем начальные остатки
+                    var openingBalances = {};
+                    for (var i = 0; i < result.data.length; i++) {
+                        var row = result.data[i];
+                        if (!openingBalances[row.material_id]) openingBalances[row.material_id] = 0;
+                        if (row.movement_type === 'INCOME') {
+                            openingBalances[row.material_id] += row.quantity;
+                        } else {
+                            openingBalances[row.material_id] -= row.quantity;
+                        }
+                    }
+
+                    // Считаем движения за месяц
+                    var monthlyIncome = {};
+                    var monthlyExpense = {};
+                    for (var j = 0; j < movements.length; j++) {
+                        var m = movements[j];
+                        if (m.movement_type === 'INCOME') {
+                            if (!monthlyIncome[m.material_id]) monthlyIncome[m.material_id] = 0;
+                            monthlyIncome[m.material_id] += m.quantity;
+                        } else {
+                            if (!monthlyExpense[m.material_id]) monthlyExpense[m.material_id] = 0;
+                            monthlyExpense[m.material_id] += m.quantity;
+                        }
+                    }
+
+                    // Формируем отчет
+                    reportData = [];
+                    var filteredMaterials = allMaterials;
+
+                    if (category) {
+                        filteredMaterials = allMaterials.filter(function(m) {
+                            return m.category === category;
+                        });
+                    }
+
+                    var totalIncome = 0;
+                    var totalExpense = 0;
+
+                    for (var k = 0; k < filteredMaterials.length; k++) {
+                        var mat = filteredMaterials[k];
+                        var opening = openingBalances[mat.id] || 0;
+                        var income = monthlyIncome[mat.id] || 0;
+                        var expense = monthlyExpense[mat.id] || 0;
+                        var closing = opening + income - expense;
+
+                        totalIncome += income;
+                        totalExpense += expense;
+
+                        reportData.push({
+                            id: mat.id,
+                            code: mat.code,
+                            name: mat.name,
+                            category: mat.category || '—',
+                            unit: mat.unit || 'шт',
+                            opening: opening,
+                            income: income,
+                            expense: expense,
+                            closing: closing
+                        });
+                    }
+
+                    // Сортируем по категории
+                    reportData.sort(function(a, b) {
+                        if (a.category < b.category) return -1;
+                        if (a.category > b.category) return 1;
+                        if (a.name < b.name) return -1;
+                        if (a.name > b.name) return 1;
+                        return 0;
+                    });
+
+                    renderReport();
+                    updateTotals(totalIncome, totalExpense);
+                    showToast('✅ Отчет сформирован за ' + month, 'success');
+
+                })
+                .catch(function(error) {
+                    console.error('Ошибка:', error);
+                    tbody.innerHTML =
+                        '<tr><td colspan="7" class="empty-state">❌ Ошибка загрузки: ' + error.message +
+                    '</td></tr>';
+                    showToast('❌ Ошибка: ' + error.message, 'error');
+                });
+        }
+
+        // ============================================
+        // ОТОБРАЖЕНИЕ ОТЧЕТА
+        // ============================================
+        function renderReport() {
+            var tbody = document.getElementById('reportBody');
+
+            if (reportData.length === 0) {
+                tbody.innerHTML =
+                    '<tr><td colspan="7" class="empty-state">📭 Нет данных за выбранный период</td></tr>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < reportData.length; i++) {
+                var r = reportData[i];
+                var categoryClass = (r.category || '').toLowerCase();
+
+                html += '<tr>' +
+                    '<td>' + (i + 1) + '</td>' +
+                    '<td><span class="material-name">' + r.name + '</span><br><span class="text-gray font-mono" style="font-size:12px;">' +
+                    r.code + '</span></td>' +
+                    '<td><span class="category-badge ' + categoryClass + '">' + r.category + '</span></td>' +
+                    '<td class="text-right fw-bold">' + formatNumber(r.opening) + '</td>' +
+                    '<td class="text-right text-green">' + formatNumber(r.income) + '</td>' +
+                    '<td class="text-right text-red">' + formatNumber(r.expense) + '</td>' +
+                    '<td class="text-right fw-bold">' + formatNumber(r.closing) + '</td>' +
+                    '</tr>';
+            }
+
+            tbody.innerHTML = html;
+
+            // Показываем кнопку экспорта
+            document.getElementById('exportBtn').disabled = false;
+        }
+
+        // ============================================
+        // ОБНОВЛЕНИЕ ИТОГО
+        // ============================================
+        function updateTotals(totalIncome, totalExpense) {
+            document.getElementById('totalMaterials').textContent = reportData.length;
+            document.getElementById('totalIncome').textContent = formatNumber(totalIncome);
+            document.getElementById('totalExpense').textContent = formatNumber(totalExpense);
+        }
+
+        // ============================================
+        // ЭКСПОРТ В GOOGLE SHEETS
+        // ============================================
+        function exportToGoogleSheets() {
+            if (reportData.length === 0) {
+                showToast('⚠️ Сначала сформируйте отчет', 'info');
+                return;
+            }
+
+            var btn = document.getElementById('exportBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Экспорт...';
+
+            // Показываем прогресс
+            var progressBar = document.getElementById('progressBar');
+            var progressFill = document.getElementById('progressFill');
+            progressBar.className = 'progress-bar show';
+            progressFill.style.width = '0%';
+
+            // Подготавливаем данные для Google Sheets
+            var headers = ['Код', 'Материал', 'Категория', 'Ед.изм.', 'Остаток на начало', 'Приход', 'Расход',
+                'Остаток на конец'
+            ];
+            var rows = [];
+
+            for (var i = 0; i < reportData.length; i++) {
+                var r = reportData[i];
+                rows.push([
+                    r.code,
+                    r.name,
+                    r.category,
+                    r.unit,
+                    r.opening,
+                    r.income,
+                    r.expense,
+                    r.closing
+                ]);
+            }
+
+            // Обновляем прогресс
+            progressFill.style.width = '30%';
+
+            // Создаем CSV
+            var csv = headers.join(',') + '\n';
+            for (var j = 0; j < rows.length; j++) {
+                var row = rows[j];
+                var escapedRow = row.map(function(cell) {
+                    if (typeof cell === 'string' && cell.includes(',')) {
+                        return '"' + cell + '"';
+                    }
+                    return cell;
+                });
+                csv += escapedRow.join(',') + '\n';
+            }
+
+            progressFill.style.width = '70%';
+
+            // Создаем ссылку для скачивания (в реальном проекте здесь был бы вызов Google Sheets API)
+            // В упрощенной версии — скачиваем CSV
+            var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement('a');
+            var month = document.getElementById('reportMonth').value;
+            link.href = URL.createObjectURL(blob);
+            link.download = 'отчет_' + month + '.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
+
+            progressFill.style.width = '100%';
+
+            setTimeout(function() {
+                progressBar.className = 'progress-bar';
+                progressFill.style.width = '0%';
+            }, 1500);
+
+            showToast('✅ Отчет экспортирован в CSV. Для Google Sheets загрузите файл вручную.', 'success');
+
+            btn.disabled = false;
+            btn.textContent = '📤 Экспорт в Google Sheets';
+        }
+
+        // ============================================
+        // СКАЧАТЬ CSV
+        // ============================================
+        function downloadCSV() {
+            if (reportData.length === 0) {
+                showToast('⚠️ Сначала сформируйте отчет', 'info');
+                return;
+            }
+
+            var headers = ['Код', 'Материал', 'Категория', 'Ед.изм.', 'Остаток на начало', 'Приход', 'Расход',
+                'Остаток на конец'
+            ];
+            var rows = [];
+
+            for (var i = 0; i < reportData.length; i++) {
+                var r = reportData[i];
+                rows.push([
+                    r.code,
+                    r.name,
+                    r.category,
+                    r.unit,
+                    r.opening,
+                    r.income,
+                    r.expense,
+                    r.closing
+                ]);
+            }
+
+            var csv = headers.join(',') + '\n';
+            for (var j = 0; j < rows.length; j++) {
+                var row = rows[j];
+                var escapedRow = row.map(function(cell) {
+                    if (typeof cell === 'string' && cell.includes(',')) {
+                        return '"' + cell + '"';
+                    }
+                    return cell;
+                });
+                csv += escapedRow.join(',') + '\n';
+            }
+
+            var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement('a');
+            var month = document.getElementById('reportMonth').value;
+            link.href = URL.createObjectURL(blob);
+            link.download = 'отчет_' + month + '.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
+
+            showToast('📥 CSV файл скачан', 'success');
+        }
+
+        // ============================================
+        // ФОРМАТИРОВАНИЕ
+        // ============================================
+        function formatNumber(num) {
+            if (num === undefined || num === null) return '0';
+            if (Number.isInteger(num)) return num.toString();
+            return num.toFixed(3).replace(/\.?0+$/, '');
+        }
+
+        // ============================================
+        // TOAST
+        // ============================================
+        function showToast(message, type) {
+            type = type || 'info';
+            var toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            setTimeout(function() { toast.classList.add('show'); }, 10);
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(function() { toast.classList.remove('show'); }, 4000);
+        }
+    </script>
+
+</body>
+</html>
