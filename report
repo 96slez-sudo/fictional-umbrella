@@ -442,19 +442,19 @@
     <div class="container">
 
         <!-- ===== ХЕДЕР ===== -->
-        <header class="header">
-            <div class="logo">📦 <span>Учет материалов</span></div>
-            <div class="nav">
-                <a href="index.html">Отгрузка</a>
-                <a href="dashboard.html">Дашборд</a>
-                <a href="balances.html">Остатки</a>
-                <a href="reports.html" class="active">Отчеты</a>
-            </div>
-            <div class="status-badge" id="statusBar">
-                <span class="dot"></span>
-                <span id="connectionStatus">Подключение...</span>
-            </div>
-        </header>
+       <header class="header">
+    <div class="logo">📦 <span>Учет материалов</span></div>
+    <nav class="nav">
+        <a href="index.html" class="active">📋 Отгрузка</a>
+        <a href="dashboard.html">📊 Дашборд</a>
+        <a href="balances.html">✏️ Остатки</a>
+        <a href="reports.html">📈 Отчеты</a>
+    </nav>
+    <div class="status-badge" id="statusBar">
+        <span class="dot"></span>
+        <span id="connectionStatus">Подключение...</span>
+    </div>
+</header>
 
         <!-- ===== ЗАГОЛОВОК ===== -->
         <h1 class="page-title">📊 Отчет за месяц</h1>
