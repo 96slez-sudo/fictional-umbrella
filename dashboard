@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Дашборд остатков</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" />
+
+    <style>
+        /* ===== APPLE STYLE ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* ----- ХЕДЕР (навигация) ----- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 24px 0;
+            border-bottom: 1px solid #e5e5ea;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            color: #1d1d1f;
+        }
+
+        .logo span {
+            font-weight: 300;
+            color: #86868b;
+        }
+
+        .nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .nav a {
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1d1d1f;
+            text-decoration: none;
+            transition: all 0.2s;
+            background: #f5f5f7;
+        }
+
+        .nav a:hover {
+            background: #e5e5ea;
+        }
+
+        .nav a.active {
+            background: #007aff;
+            color: #ffffff;
+        }
+
+        .status-badge {
+            font-size: 13px;
+            color: #34c759;
+            background: #e8f9ed;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34c759;
+            display: inline-block;
+        }
+
+        .status-badge.error {
+            color: #ff3b30;
+            background: #fde8e8;
+        }
+        .status-badge.error .dot {
+            background: #ff3b30;
+        }
+
+        /* ----- ЗАГОЛОВОК ----- */
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+        }
+        .page-subtitle {
+            font-size: 17px;
+            color: #86868b;
+            margin-bottom: 28px;
+        }
+
+        /* ----- СТАТИСТИКА (карточки) ----- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 20px 24px;
+            border: 1px solid #e5e5ea;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1d1d1f;
+            letter-spacing: -0.5px;
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            color: #86868b;
+            margin-top: 4px;
+        }
+
+        .stat-card.critical .number {
+            color: #ff3b30;
+        }
+        .stat-card.warning .number {
+            color: #ff9500;
+        }
+        .stat-card.ok .number {
+            color: #34c759;
+        }
+
+        /* ----- ТАБЛИЦА (Apple Style) ----- */
+        .table-wrapper {
+            background: #ffffff;
+            border-radius: 18px;
+            border: 1px solid #e5e5ea;
+            overflow: hidden;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 15px;
+        }
+
+        thead {
+            background: #f8f8fa;
+        }
+
+        th {
+            padding: 14px 18px;
+            text-align: left;
+            font-weight: 600;
+            color: #86868b;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 1px solid #e5e5ea;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 14px 18px;
+            border-bottom: 1px solid #f0f0f2;
+            color: #1d1d1f;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .material-name {
+            font-weight: 500;
+        }
+
+        .material-code {
+            font-size: 12px;
+            color: #86868b;
+            font-family: monospace;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .category-badge.постоянные {
+            background: #e8f9ed;
+            color: #34c759;
+        }
+        .category-badge.поддоны {
+            background: #fff5e6;
+            color: #ff9500;
+        }
+        .category-badge.коробки {
+            background: #e8f0fe;
+            color: #007aff;
+        }
+        .category-badge.склад {
+            background: #f5e6ff;
+            color: #af52de;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-dot.green {
+            background: #34c759;
+        }
+        .status-dot.yellow {
+            background: #ff9500;
+        }
+        .status-dot.red {
+            background: #ff3b30;
+        }
+
+        .days {
+            font-size: 13px;
+            color: #86868b;
+        }
+
+        .btn-link {
+            background: none;
+            border: none;
+            color: #007aff;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-link:hover {
+            background: #f0f7ff;
+        }
+
+        /* ----- ПОИСК И ФИЛЬТРЫ ----- */
+        .filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filters input,
+        .filters select {
+            padding: 10px 16px;
+            border: 1.5px solid #d2d2d6;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: inherit;
+            background: #ffffff;
+            transition: border-color 0.2s;
+            min-width: 180px;
+        }
+
+        .filters input:focus,
+        .filters select:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+        }
+
+        .filters input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .btn-outline {
+            padding: 10px 20px;
+            border: 1.5px solid #d2d2d6;
+            border-radius: 12px;
+            background: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1d1d1f;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-outline:hover {
+            border-color: #007aff;
+            background: #f5f9ff;
+        }
+
+        /* ----- TOAST ----- */
+        .toast {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            padding: 16px 24px;
+            border-radius: 16px;
+            background: #1d1d1f;
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            max-width: 420px;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: #34c759;
+        }
+        .toast.error {
+            background: #ff3b30;
+        }
+        .toast.info {
+            background: #007aff;
+        }
+
+        /* ----- АДАПТИВ ----- */
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .nav {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .nav a {
+                font-size: 13px;
+                padding: 6px 14px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filters input {
+                min-width: unset;
+            }
+
+            .stat-card .number {
+                font-size: 24px;
+            }
+
+            .page-title {
+                font-size: 22px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            th,
+            td {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            .container {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- ===== ХЕДЕР ===== -->
+        <header class="header">
+            <div class="logo">📦 <span>Учет материалов</span></div>
+            <div class="nav">
+                <a href="index.html">Отгрузка</a>
+                <a href="dashboard.html" class="active">Дашборд</a>
+                <a href="balances.html">Остатки</a>
+                <a href="reports.html">Отчеты</a>
+            </div>
+            <div class="status-badge" id="statusBar">
+                <span class="dot"></span>
+                <span id="connectionStatus">Подключение...</span>
+            </div>
+        </header>
+
+        <!-- ===== ЗАГОЛОВОК ===== -->
+        <h1 class="page-title">📊 Дашборд остатков</h1>
+        <p class="page-subtitle">Актуальные остатки материалов и прогноз</p>
+
+        <!-- ===== СТАТИСТИКА ===== -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="number" id="totalMaterials">0</div>
+                <div class="label">Всего материалов</div>
+            </div>
+            <div class="stat-card critical">
+                <div class="number" id="criticalCount">0</div>
+                <div class="label">🔴 Критический остаток</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="number" id="warningCount">0</div>
+                <div class="label">🟡 Заканчивается</div>
+            </div>
+            <div class="stat-card ok">
+                <div class="number" id="okCount">0</div>
+                <div class="label">✅ В норме</div>
+            </div>
+        </div>
+
+        <!-- ===== ФИЛЬТРЫ ===== -->
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="🔍 Поиск по названию..." />
+            <select id="categoryFilter">
+                <option value="">Все категории</option>
+                <option value="ПОСТОЯННЫЕ">Постоянные</option>
+                <option value="Поддоны">Поддоны</option>
+                <option value="Коробки">Коробки</option>
+                <option value="СКЛАД">Склад</option>
+            </select>
+            <button class="btn-outline" onclick="loadDashboard()">🔄 Обновить</button>
+            <button class="btn-outline" onclick="window.location.href='balances.html'">✏️ Редактировать</button>
+        </div>
+
+        <!-- ===== ТАБЛИЦА ===== -->
+        <div class="table-wrapper">
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Материал</th>
+                            <th>Категория</th>
+                            <th>Остаток</th>
+                            <th>Дней до 0</th>
+                            <th>Статус</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboardBody">
+                        <tr>
+                            <td colspan="7" style="text-align:center;padding:40px;color:#86868b;">
+                                ⏳ Загрузка данных...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===== TOAST ===== -->
+    <div class="toast" id="toast"></div>
+
+    <!-- ========================================== -->
+    <!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ -->
+    <!-- ========================================== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
+    <script>
+        // ============================================
+        // НАСТРОЙКА SUPABASE
+        // ============================================
+        var SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
+        var SUPABASE_ANON_KEY =
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
+
+        if (typeof window.supabaseClient === 'undefined') {
+            window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+        var supabase = window.supabaseClient;
+
+        // ============================================
+        // ПЕРЕМЕННЫЕ
+        // ============================================
+        var materials = [];
+
+        // ============================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            checkConnection();
+            loadDashboard();
+
+            document.getElementById('searchInput').addEventListener('input', renderTable);
+            document.getElementById('categoryFilter').addEventListener('change', renderTable);
+        });
+
+        // ============================================
+        // ПРОВЕРКА ПОДКЛЮЧЕНИЯ
+        // ============================================
+        function checkConnection() {
+            var statusEl = document.getElementById('connectionStatus');
+            var bar = document.getElementById('statusBar');
+
+            supabase.from('materials').select('count').limit(1)
+                .then(function(result) {
+                    if (result.error) throw result.error;
+                    statusEl.textContent = 'Подключено';
+                    bar.className = 'status-badge';
+                })
+                .catch(function(error) {
+                    console.error('Ошибка:', error);
+                    statusEl.textContent = 'Ошибка';
+                    bar.className = 'status-badge error';
+                });
+        }
+
+        // ============================================
+        // ЗАГРУЗКА ДАШБОРДА
+        // ============================================
+        function loadDashboard() {
+            var tbody = document.getElementById('dashboardBody');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#86868b;">⏳ Загрузка...</td></tr>';
+
+            supabase.from('materials').select('*').order('category').order('name')
+                .then(function(result) {
+                    if (result.error) throw result.error;
+                    materials = result.data;
+
+                    return supabase.from('movements')
+                        .select('material_id, quantity, movement_type');
+                })
+                .then(function(result) {
+                    if (result.error) throw result.error;
+
+                    // Считаем остатки
+                    var balances = {};
+                    for (var i = 0; i < result.data.length; i++) {
+                        var row = result.data[i];
+                        if (!balances[row.material_id]) balances[row.material_id] = 0;
+                        if (row.movement_type === 'INCOME') {
+                            balances[row.material_id] += row.quantity;
+                        } else {
+                            balances[row.material_id] -= row.quantity;
+                        }
+                    }
+
+                    // Добавляем остатки
+                    for (var j = 0; j < materials.length; j++) {
+                        materials[j].balance = balances[materials[j].id] || 0;
+                    }
+
+                    renderTable();
+                    updateStats();
+                })
+                .catch(function(error) {
+                    console.error('Ошибка:', error);
+                    tbody.innerHTML =
+                        '<tr><td colspan="7" style="text-align:center;padding:40px;color:#ff3b30;">❌ Ошибка загрузки</td></tr>';
+                    showToast('❌ Ошибка загрузки: ' + error.message, 'error');
+                });
+        }
+
+        // ============================================
+        // ОТОБРАЖЕНИЕ ТАБЛИЦЫ
+        // ============================================
+        function renderTable() {
+            var search = document.getElementById('searchInput').value.toLowerCase();
+            var category = document.getElementById('categoryFilter').value;
+            var tbody = document.getElementById('dashboardBody');
+
+            var filtered = materials.filter(function(m) {
+                var matchName = m.name.toLowerCase().includes(search);
+                var matchCategory = !category || m.category === category;
+                return matchName && matchCategory;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML =
+                    '<tr><td colspan="7" style="text-align:center;padding:40px;color:#86868b;">🔍 Ничего не найдено</td></tr>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < filtered.length; i++) {
+                var m = filtered[i];
+                var balance = m.balance || 0;
+
+                // Определяем статус
+                var statusText = '✅ Норма';
+                var statusClass = 'green';
+                var daysLeft = '∞';
+
+                // Средний расход за 7 дней (упрощенно — для демо)
+                var avgDaily = 0;
+                if (m.avg_daily) avgDaily = m.avg_daily;
+
+                if (avgDaily > 0) {
+                    var days = Math.floor(balance / avgDaily);
+                    if (days < 0) days = 0;
+                    daysLeft = days + ' дн';
+
+                    if (days <= 3) {
+                        statusText = '🔴 Критично!';
+                        statusClass = 'red';
+                    } else if (days <= 7) {
+                        statusText = '🟡 Заканчивается';
+                        statusClass = 'yellow';
+                    } else {
+                        statusText = '✅ Норма';
+                        statusClass = 'green';
+                    }
+                } else {
+                    daysLeft = '∞';
+                }
+
+                var categoryClass = (m.category || '').toLowerCase();
+
+                html += '<tr>' +
+                    '<td>' + (i + 1) + '</td>' +
+                    '<td><span class="material-name">' + m.name + '</span><br><span class="material-code">' + m.code +
+                    '</span></td>' +
+                    '<td><span class="category-badge ' + categoryClass + '">' + (m.category || '—') + '</span></td>' +
+                    '<td><strong>' + formatNumber(balance) + '</strong> ' + (m.unit || 'шт') + '</td>' +
+                    '<td><span class="days">' + daysLeft + '</span></td>' +
+                    '<td><span class="status-dot ' + statusClass + '"></span>' + statusText + '</td>' +
+                    '<td><button class="btn-link" onclick="window.location.href=\'balances.html\'">✏️</button></td>' +
+                    '</tr>';
+            }
+
+            tbody.innerHTML = html;
+        }
+
+        // ============================================
+        // СТАТИСТИКА
+        // ============================================
+        function updateStats() {
+            var total = materials.length;
+            var critical = 0;
+            var warning = 0;
+            var ok = 0;
+
+            for (var i = 0; i < materials.length; i++) {
+                var m = materials[i];
+                var balance = m.balance || 0;
+                // Упрощенная логика для демо
+                if (balance <= 10) critical++;
+                else if (balance <= 50) warning++;
+                else ok++;
+            }
+
+            document.getElementById('totalMaterials').textContent = total;
+            document.getElementById('criticalCount').textContent = critical;
+            document.getElementById('warningCount').textContent = warning;
+            document.getElementById('okCount').textContent = ok;
+        }
+
+        // ============================================
+        // ФОРМАТИРОВАНИЕ
+        // ============================================
+        function formatNumber(num) {
+            if (num === undefined || num === null) return '0';
+            if (Number.isInteger(num)) return num.toString();
+            return num.toFixed(3).replace(/\.?0+$/, '');
+        }
+
+        // ============================================
+        // TOAST
+        // ============================================
+        function showToast(message, type) {
+            type = type || 'info';
+            var toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            setTimeout(function() { toast.classList.add('show'); }, 10);
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(function() { toast.classList.remove('show'); }, 3000);
+        }
+    </script>
+
+</body>
+</html>
