@@ -1,442 +1,807 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📦 Отгрузка заказа</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-    </script>
-    
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Отгрузка заказа</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" />
+
     <style>
+        /* ============================================
+           APPLE STYLE — единый стиль для всех страниц
+           ============================================ */
+
+        /* ----- СБРОС ----- */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #f0f2f5;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
         }
+
         .container {
-            max-width: 950px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            max-width: 820px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 40px 40px 48px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
         }
-        h1 {
-            font-size: 24px;
-            color: #1a1a2e;
-            margin-bottom: 24px;
+
+        /* ===== ХЕДЕР С МЕНЮ ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e5e5ea;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 12px;
         }
-        .form-group {
-            margin-bottom: 16px;
+
+        .logo {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            color: #1d1d1f;
         }
-        .form-row {
+
+        .logo span {
+            font-weight: 300;
+            color: #86868b;
+        }
+
+        /* ===== МЕНЮ ===== */
+        .nav {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .nav a {
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1d1d1f;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            background: #f5f5f7;
+        }
+
+        .nav a:hover {
+            background: #e5e5ea;
+        }
+
+        .nav a.active {
+            background: #007aff;
+            color: #ffffff;
+            box-shadow: 0 2px 12px rgba(0, 122, 255, 0.25);
+        }
+
+        .nav a .icon {
+            margin-right: 4px;
+        }
+
+        /* ===== СТАТУС ===== */
+        .status-badge {
+            font-size: 13px;
+            color: #34c759;
+            background: #e8f9ed;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .status-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34c759;
+            display: inline-block;
+        }
+
+        .status-badge.error {
+            color: #ff3b30;
+            background: #fde8e8;
+        }
+
+        .status-badge.error .dot {
+            background: #ff3b30;
+        }
+
+        /* ===== ЗАГОЛОВОК СТРАНИЦЫ ===== */
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+            color: #1d1d1f;
+        }
+
+        .page-subtitle {
+            font-size: 17px;
+            color: #86868b;
+            margin-bottom: 28px;
+            font-weight: 400;
+        }
+
+        /* ===== СЕКЦИИ ===== */
+        .section {
+            background: #f8f8fa;
+            border-radius: 18px;
+            padding: 20px 24px;
+            margin-bottom: 18px;
+            border: 1px solid #e5e5ea;
+            transition: border 0.2s;
+        }
+
+        .section:hover {
+            border-color: #c6c6c8;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 14px;
+        }
+
+        /* ===== СЕТКИ ===== */
+        .row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 18px;
         }
-        label {
-            display: block;
-            font-weight: 600;
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-group label {
             font-size: 14px;
-            color: #333;
-            margin-bottom: 6px;
+            font-weight: 500;
+            color: #1d1d1f;
+            letter-spacing: -0.2px;
         }
-        label .required {
-            color: #e74c3c;
+
+        .form-group label .required {
+            color: #ff3b30;
         }
+
+        .form-group .hint {
+            font-size: 12px;
+            color: #86868b;
+            font-weight: 400;
+        }
+
+        /* ===== ПОЛЯ ===== */
         input,
         select {
             width: 100%;
-            padding: 10px 14px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            background: white;
+            padding: 11px 16px;
+            font-size: 15px;
+            font-family: inherit;
+            background: #ffffff;
+            border: 1.5px solid #d2d2d6;
+            border-radius: 12px;
+            color: #1d1d1f;
+            transition: all 0.2s ease;
+            appearance: none;
+            -webkit-appearance: none;
         }
+
         input:focus,
         select:focus {
             outline: none;
-            border-color: #4a90d9;
+            border-color: #007aff;
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
         }
+
+        input::placeholder {
+            color: #aeaeb2;
+            font-weight: 400;
+        }
+
+        input[type="date"] {
+            color: #1d1d1f;
+        }
+
         input[type="number"] {
-            max-width: 120px;
+            max-width: 140px;
         }
-        .section {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 16px 20px;
-            margin-bottom: 16px;
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2386868b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
         }
-        .section-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #555;
-            text-transform: uppercase;
-            margin-bottom: 12px;
+
+        /* ===== ФОРМАТ ===== */
+        .format-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 2px;
         }
+
+        .format-btn {
+            padding: 7px 20px;
+            border: 1.5px solid #d2d2d6;
+            border-radius: 20px;
+            background: #ffffff;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1d1d1f;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            letter-spacing: -0.2px;
+        }
+
+        .format-btn:hover {
+            border-color: #007aff;
+            background: #f5f9ff;
+        }
+
+        .format-btn.active {
+            border-color: #007aff;
+            background: #007aff;
+            color: #ffffff;
+            box-shadow: 0 2px 12px rgba(0, 122, 255, 0.25);
+        }
+
+        .format-btn input {
+            display: none;
+        }
+
+        /* ===== ЧЕКБОКСЫ ===== */
         .checkbox-group {
             display: flex;
             flex-wrap: wrap;
             gap: 16px;
-            padding: 4px 0;
+            padding: 2px 0;
         }
+
         .checkbox-item {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1d1d1f;
             cursor: pointer;
-            font-size: 14px;
-            padding: 4px 8px;
-            border-radius: 6px;
+            user-select: none;
+            padding: 5px 12px 5px 6px;
+            border-radius: 12px;
+            transition: background 0.2s;
         }
+
         .checkbox-item:hover {
-            background: #f0f0f0;
+            background: #f5f5f7;
         }
+
         .checkbox-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #4a90d9;
+            width: 20px;
+            height: 20px;
+            accent-color: #007aff;
+            border-radius: 6px;
+            cursor: pointer;
+            flex-shrink: 0;
         }
+
+        .badge {
+            font-size: 12px;
+            font-weight: 500;
+            padding: 2px 12px;
+            border-radius: 20px;
+            color: #ffffff;
+        }
+
+        .badge-blue {
+            background: #007aff;
+        }
+        .badge-green {
+            background: #34c759;
+        }
+        .badge-orange {
+            background: #ff9500;
+        }
+
+        /* ===== СПЕЦИАЛЬНЫЕ ===== */
         .special-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            gap: 14px;
         }
+
         .special-item {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 8px 14px;
-            background: white;
-            border-radius: 8px;
-            border: 2px solid #e8e8e8;
+            background: #ffffff;
+            padding: 8px 16px;
+            border-radius: 14px;
+            border: 1.5px solid #e5e5ea;
+            transition: border 0.2s;
         }
+
+        .special-item:hover {
+            border-color: #c6c6c8;
+        }
+
         .special-item input[type="checkbox"] {
             width: 18px;
             height: 18px;
-            accent-color: #4a90d9;
+            accent-color: #007aff;
+            flex-shrink: 0;
         }
-        .special-item input[type="number"] {
-            width: 80px;
-            padding: 6px 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 13px;
-        }
-        .special-item input[type="number"]:disabled {
-            opacity: 0.5;
-            background: #f5f5f5;
-        }
+
         .special-item label {
-            margin: 0;
+            font-size: 14px;
             font-weight: 500;
-            font-size: 13px;
-            white-space: nowrap;
+            color: #1d1d1f;
+            cursor: pointer;
+            flex: 1;
         }
+
+        .special-item input[type="number"] {
+            width: 70px;
+            padding: 5px 8px;
+            font-size: 14px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .special-item input[type="number"]:disabled {
+            opacity: 0.4;
+            background: #f5f5f7;
+        }
+
+        .special-item .unit {
+            font-size: 13px;
+            color: #86868b;
+        }
+
+        /* ===== КОРОБКИ ===== */
         .boxes-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
-            gap: 12px;
+            gap: 10px;
             margin-top: 10px;
         }
+
         .box-item {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 12px;
-            background: white;
-            border-radius: 8px;
-            border: 2px solid #e8e8e8;
+            background: #ffffff;
+            padding: 6px 12px;
+            border-radius: 14px;
+            border: 1.5px solid #e5e5ea;
+            transition: border 0.2s;
         }
+
+        .box-item:hover {
+            border-color: #c6c6c8;
+        }
+
         .box-item select {
             flex: 1;
-            min-width: 100px;
-            padding: 6px 8px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            min-width: 80px;
+            padding: 5px 8px;
             font-size: 13px;
+            border-radius: 10px;
+            border: 1px solid #e5e5ea;
+            background-color: #ffffff;
         }
+
+        .box-item select:focus {
+            border-color: #007aff;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
         .box-item input[type="number"] {
-            width: 70px;
-            padding: 6px 8px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            width: 60px;
+            padding: 5px 6px;
             font-size: 13px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e5e5ea;
         }
-        .box-item label {
-            margin: 0;
-            font-weight: 500;
+
+        .box-item input[type="number"]:focus {
+            border-color: #007aff;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        .box-item .box-label {
             font-size: 13px;
-            min-width: 30px;
+            color: #86868b;
         }
-        .calculation-preview {
-            background: #1a1a2e;
-            color: #fff;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 16px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-        }
-        .calculation-preview .calc-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 3px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .calculation-preview .calc-label {
-            color: #aaa;
-        }
-        .calculation-preview .calc-value {
-            color: #4fc3f7;
-            font-weight: bold;
-        }
-        .calculation-preview .calc-total {
-            border-top: 2px solid #4fc3f7;
-            margin-top: 6px;
-            padding-top: 6px;
-            font-size: 16px;
-        }
-        .calculation-preview .calc-total .calc-value {
-            color: #81c784;
-            font-size: 18px;
-        }
-        .calculation-preview .calc-section {
-            color: #666;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 6px;
-            padding-top: 4px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .buttons {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-        }
-        .btn {
-            padding: 12px 32px;
+
+        .btn-remove {
+            background: none;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
+            color: #86868b;
+            font-size: 17px;
+            cursor: pointer;
+            padding: 0 4px;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .btn-remove:hover {
+            color: #ff3b30;
+        }
+
+        .btn-add {
+            background: none;
+            border: 1.5px dashed #c6c6c8;
+            border-radius: 14px;
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #007aff;
             cursor: pointer;
             transition: all 0.2s;
+            font-family: inherit;
+            margin-top: 10px;
+        }
+
+        .btn-add:hover {
+            border-color: #007aff;
+            background: #f5f9ff;
+        }
+
+        /* ===== ПРЕДПРОСМОТР ===== */
+        .calc-preview {
+            background: #f8f8fa;
+            border-radius: 18px;
+            padding: 20px 24px;
+            margin-top: 18px;
+            border: 1px solid #e5e5ea;
+        }
+
+        .calc-preview .calc-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 14px;
+        }
+
+        .calc-preview .calc-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 15px;
+            color: #1d1d1f;
+            border-bottom: 1px solid #e5e5ea;
+        }
+
+        .calc-preview .calc-row:last-of-type {
+            border-bottom: none;
+        }
+
+        .calc-preview .calc-label {
+            color: #86868b;
+            font-weight: 400;
+        }
+
+        .calc-preview .calc-value {
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .calc-preview .calc-total {
+            border-top: 2px solid #1d1d1f;
+            margin-top: 8px;
+            padding-top: 10px;
+            font-size: 17px;
+        }
+
+        .calc-preview .calc-total .calc-value {
+            color: #007aff;
+        }
+
+        .calc-preview .calc-section {
+            font-size: 11px;
+            font-weight: 600;
+            color: #aeaeb2;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e5ea;
+        }
+
+        /* ===== КНОПКИ ===== */
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            padding: 13px 32px;
+            border: none;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.25s ease;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-        }
-        .btn-secondary {
-            background: #e8e8e8;
-            color: #555;
-        }
-        .btn-secondary:hover {
-            background: #ddd;
-        }
-        .btn-success {
-            background: #43a047;
-            color: white;
-            flex: 1;
             justify-content: center;
+            gap: 8px;
+            letter-spacing: -0.2px;
         }
-        .btn-success:hover {
-            background: #388e3c;
+
+        .btn-secondary {
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e5ea;
+        }
+
+        .btn-primary {
+            background: #007aff;
+            color: #ffffff;
+            box-shadow: 0 2px 16px rgba(0, 122, 255, 0.25);
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            background: #0066d9;
+            box-shadow: 0 4px 24px rgba(0, 122, 255, 0.35);
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3);
         }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: #34c759;
+            color: #ffffff;
+            box-shadow: 0 2px 16px rgba(52, 199, 89, 0.25);
+            flex: 1;
+        }
+
+        .btn-success:hover {
+            background: #28a745;
+            box-shadow: 0 4px 24px rgba(52, 199, 89, 0.35);
+            transform: translateY(-1px);
+        }
+
         .btn-success:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
-        .btn-danger {
-            background: #e53935;
-            color: white;
-            padding: 4px 8px;
-            font-size: 12px;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-danger:hover {
-            background: #c62828;
-        }
-        .btn-sm {
-            padding: 6px 14px;
-            font-size: 13px;
-        }
+
+        /* ===== TOAST ===== */
         .toast {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
+            bottom: 40px;
+            right: 40px;
             padding: 16px 24px;
-            border-radius: 12px;
-            color: white;
+            border-radius: 16px;
+            background: #1d1d1f;
+            color: #ffffff;
+            font-size: 15px;
             font-weight: 500;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            transform: translateY(100px);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+            transform: translateY(80px);
             opacity: 0;
-            transition: all 0.3s ease;
-            max-width: 400px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1000;
+            max-width: 420px;
         }
+
         .toast.show {
             transform: translateY(0);
             opacity: 1;
         }
+
         .toast.success {
-            background: #43a047;
+            background: #34c759;
         }
         .toast.error {
-            background: #e53935;
+            background: #ff3b30;
         }
         .toast.info {
-            background: #4a90d9;
+            background: #007aff;
         }
-        .status-bar {
-            background: #e8f5e9;
-            padding: 10px 16px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            color: #2e7d32;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .status-bar .status-dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #43a047;
-            margin-right: 8px;
-        }
-        .status-bar.error {
-            background: #ffebee;
-            color: #c62828;
-        }
-        .status-bar.error .status-dot {
-            background: #e53935;
-        }
-        .badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        .badge-blue {
-            background: #e3f2fd;
-            color: #1565c0;
-        }
-        .badge-green {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-        .badge-orange {
-            background: #fff3e0;
-            color: #e65100;
-        }
-        .format-selector {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .format-selector .format-btn {
-            padding: 6px 16px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            background: white;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-        .format-selector .format-btn:hover {
-            border-color: #4a90d9;
-            background: #f0f7ff;
-        }
-        .format-selector .format-btn.active {
-            border-color: #4a90d9;
-            background: #4a90d9;
-            color: white;
-        }
-        .format-selector .format-btn input {
-            display: none;
-        }
-        @media (max-width: 600px) {
-            .form-row {
+
+        /* ===== АДАПТИВ ===== */
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+
+            .container {
+                padding: 24px 18px;
+                border-radius: 20px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .nav {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .nav a {
+                font-size: 13px;
+                padding: 6px 14px;
+            }
+
+            .row {
                 grid-template-columns: 1fr;
             }
+
             .special-group {
                 grid-template-columns: 1fr;
             }
+
             .boxes-grid {
                 grid-template-columns: 1fr;
             }
-            .buttons {
+
+            .actions {
                 flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .page-title {
+                font-size: 24px;
+            }
+
+            .status-badge {
+                font-size: 12px;
+                padding: 3px 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 16px 12px;
+            }
+
+            .format-group {
+                gap: 5px;
+            }
+
+            .format-btn {
+                padding: 5px 12px;
+                font-size: 13px;
+            }
+
+            .checkbox-group {
+                gap: 10px;
+            }
+
+            .calc-preview {
+                padding: 14px 16px;
+            }
+
+            .calc-preview .calc-row {
+                font-size: 13px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="buttons">
-    <button type="button" class="btn btn-secondary" onclick="window.location.href='balances.html'">📊 Остатки</button>
-    <button type="button" class="btn btn-secondary" onclick="resetForm()">❌ Очистить</button>
-    <button type="submit" class="btn btn-success" id="submitBtn">✅ Отгрузить</button>
-</div>
     <div class="container">
-        <h1>📦 Отгрузка заказа</h1>
 
-        <div class="status-bar" id="statusBar">
-            <span><span class="status-dot"></span> Подключение к базе данных...</span>
-            <span id="connectionStatus">⏳ Проверка...</span>
-        </div>
+        <!-- ===== ХЕДЕР С МЕНЮ ===== -->
+        <header class="header">
+            <div class="logo">📦 <span>Учет материалов</span></div>
+            <nav class="nav">
+                <a href="index.html" class="active">📋 Отгрузка</a>
+                <a href="dashboard.html">📊 Дашборд</a>
+                <a href="balances.html">✏️ Остатки</a>
+                <a href="reports.html">📈 Отчеты</a>
+            </nav>
+            <div class="status-badge" id="statusBar">
+                <span class="dot"></span>
+                <span id="connectionStatus">Подключение...</span>
+            </div>
+        </header>
 
+        <!-- ===== ЗАГОЛОВОК ===== -->
+        <h1 class="page-title">📦 Отгрузка заказа</h1>
+        <p class="page-subtitle">Заполните данные и нажмите «Отгрузить»</p>
+
+        <!-- ===== ФОРМА ===== -->
         <form id="orderForm">
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Номер заказа <span class="required">*</span></label>
-                    <input type="text" id="orderNumber" placeholder="Например: ORD-2026-08-27" required>
-                </div>
-                <div class="form-group">
-                    <label>Дата</label>
-                    <input type="date" id="orderDate" style="background:#f5f5f5;">
+
+            <!-- НОМЕР И ДАТА -->
+            <div class="section">
+                <div class="section-title">Информация</div>
+                <div class="row">
+                    <div class="form-group">
+                        <label>Номер заказа <span class="required">*</span></label>
+                        <input type="text" id="orderNumber" placeholder="ORD-2026-08-29" />
+                    </div>
+                    <div class="form-group">
+                        <label>Дата</label>
+                        <input type="date" id="orderDate" />
+                    </div>
                 </div>
             </div>
 
+            <!-- ОСНОВНОЙ МАТЕРИАЛ -->
             <div class="section">
-                <div class="section-title">📄 Основной материал</div>
-                <div class="form-row">
+                <div class="section-title">Основной материал</div>
+                <div class="row">
                     <div class="form-group">
                         <label>Тип материала <span class="required">*</span></label>
-                        <select id="materialType" required>
+                        <select id="materialType">
                             <option value="smola">Смола</option>
                             <option value="vinil">Винил</option>
                             <option value="other">Другое</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Количество (шт) <span class="required">*</span></label>
-                        <input type="number" id="materialQuantity" min="0" step="1" value="1" required>
+                        <label>Количество <span class="required">*</span></label>
+                        <input type="number" id="materialQuantity" min="0" step="1" value="1" />
                     </div>
                 </div>
-                <div class="form-group">
+
+                <div class="form-group" style="margin-top:14px;">
                     <label>Формат <span class="required">*</span></label>
-                    <div class="format-selector" id="formatSelector">
-                        <label class="format-btn active"><input type="radio" name="format" value="A6" checked> А6</label>
-                        <label class="format-btn"><input type="radio" name="format" value="A5"> А5</label>
-                        <label class="format-btn"><input type="radio" name="format" value="A7"> А7</label>
-                        <label class="format-btn"><input type="radio" name="format" value="other"> Иной</label>
+                    <div class="format-group" id="formatSelector">
+                        <label class="format-btn active">
+                            <input type="radio" name="format" value="A6" checked /> А6
+                        </label>
+                        <label class="format-btn">
+                            <input type="radio" name="format" value="A5" /> А5
+                        </label>
+                        <label class="format-btn">
+                            <input type="radio" name="format" value="A7" /> А7
+                        </label>
+                        <label class="format-btn">
+                            <input type="radio" name="format" value="other" /> Иной
+                        </label>
                     </div>
                     <div id="otherFormatGroup" style="display:none; margin-top:10px;">
                         <select id="otherFormatSelect">
@@ -444,47 +809,65 @@
                             <option value="BAG_70x100">Пакет 70*100</option>
                             <option value="BAG_60x40x30">Пакет 60*40*30</option>
                         </select>
-                        <span style="font-size:12px;color:#888;margin-left:8px;">выберите пакет для иного формата</span>
+                        <span style="font-size:13px;color:#86868b;margin-left:10px;">выберите пакет</span>
                     </div>
                 </div>
             </div>
 
+            <!-- ДОПОЛНИТЕЛЬНО -->
             <div class="section">
-                <div class="section-title">🎨 Дополнительно</div>
+                <div class="section-title">Дополнительно</div>
                 <div class="checkbox-group">
-                    <label class="checkbox-item"><input type="checkbox" id="hasCaps"> Шапки (NALEPKING) <span class="badge badge-blue">→ скобы ×2</span></label>
-                    <label class="checkbox-item"><input type="checkbox" id="hasNonFormal"> Неформалки <span class="badge badge-orange">→ скобы ×2</span></label>
-                    <label class="checkbox-item"><input type="checkbox" id="hasCardboard"> Картон (вкладыши) <span class="badge badge-green">A6/24 • A5/12 • A7/48</span></label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasCaps" />
+                        Шапки (NALEPKING)
+                        <span class="badge badge-blue">×2 скобы</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasNonFormal" />
+                        Неформалки
+                        <span class="badge badge-orange">×2 скобы</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasCardboard" />
+                        Картон
+                        <span class="badge badge-green">A6/24 · A5/12 · A7/48</span>
+                    </label>
                 </div>
             </div>
 
+            <!-- СПЕЦИАЛЬНЫЕ ПАКЕТЫ -->
             <div class="section">
-                <div class="section-title">📦 Специальные пакеты</div>
+                <div class="section-title">Специальные пакеты</div>
                 <div class="special-group">
                     <div class="special-item">
-                        <input type="checkbox" id="hasASTP">
-                        <label for="hasASTP">ASTP 180*180*40</label>
-                        <input type="number" id="astpQuantity" min="0" step="1" value="0" disabled>
-                        <span style="font-size:12px;color:#888;">шт</span>
+                        <input type="checkbox" id="hasASTP" />
+                        <label for="hasASTP">ASTP 180×180×40</label>
+                        <input type="number" id="astpQuantity" min="0" step="1" value="0" disabled />
+                        <span class="unit">шт</span>
                     </div>
                     <div class="special-item">
-                        <input type="checkbox" id="hasQuant">
-                        <label for="hasQuant">Кванты 170*250*60</label>
-                        <input type="number" id="quantQuantity" min="0" step="1" value="0" disabled>
-                        <span style="font-size:12px;color:#888;">шт</span>
+                        <input type="checkbox" id="hasQuant" />
+                        <label for="hasQuant">Кванты 170×250×60</label>
+                        <input type="number" id="quantQuantity" min="0" step="1" value="0" disabled />
+                        <span class="unit">шт</span>
                     </div>
                 </div>
             </div>
 
+            <!-- КОРОБКИ -->
             <div class="section">
-                <div class="section-title">📦 Коробки</div>
+                <div class="section-title">Коробки</div>
                 <div class="checkbox-group">
-                    <label class="checkbox-item"><input type="checkbox" id="hasBoxes"> Добавить коробки</label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="hasBoxes" />
+                        Добавить коробки
+                    </label>
                 </div>
-                <div id="boxesSection" style="display:none; margin-top:12px;">
+                <div id="boxesSection" style="display:none; margin-top:10px;">
                     <div class="boxes-grid" id="boxesGrid">
                         <div class="box-item">
-                            <label>📦</label>
+                            <span class="box-label">📦</span>
                             <select class="box-type" id="boxType1">
                                 <option value="MB_SMALL">Малый MB</option>
                                 <option value="AMAZON">Амазон</option>
@@ -492,11 +875,12 @@
                                 <option value="STAND_BOX">Для стоек</option>
                                 <option value="BOY_BIG">Пацанские большие</option>
                             </select>
-                            <input type="number" class="box-qty" id="boxQty1" min="0" step="1" value="0">
-                            <span style="font-size:12px;color:#888;">шт</span>
+                            <input type="number" class="box-qty" id="boxQty1" min="0" step="1" value="0" />
+                            <span style="font-size:13px;color:#86868b;">шт</span>
+                            <button type="button" class="btn-remove" onclick="removeBoxRow(1)">✕</button>
                         </div>
                         <div class="box-item">
-                            <label>📦</label>
+                            <span class="box-label">📦</span>
                             <select class="box-type" id="boxType2">
                                 <option value="MB_SMALL">Малый MB</option>
                                 <option value="AMAZON" selected>Амазон</option>
@@ -504,11 +888,12 @@
                                 <option value="STAND_BOX">Для стоек</option>
                                 <option value="BOY_BIG">Пацанские большие</option>
                             </select>
-                            <input type="number" class="box-qty" id="boxQty2" min="0" step="1" value="0">
-                            <span style="font-size:12px;color:#888;">шт</span>
+                            <input type="number" class="box-qty" id="boxQty2" min="0" step="1" value="0" />
+                            <span style="font-size:13px;color:#86868b;">шт</span>
+                            <button type="button" class="btn-remove" onclick="removeBoxRow(2)">✕</button>
                         </div>
                         <div class="box-item">
-                            <label>📦</label>
+                            <span class="box-label">📦</span>
                             <select class="box-type" id="boxType3">
                                 <option value="MB_SMALL">Малый MB</option>
                                 <option value="AMAZON">Амазон</option>
@@ -516,48 +901,93 @@
                                 <option value="STAND_BOX">Для стоек</option>
                                 <option value="BOY_BIG">Пацанские большие</option>
                             </select>
-                            <input type="number" class="box-qty" id="boxQty3" min="0" step="1" value="0">
-                            <span style="font-size:12px;color:#888;">шт</span>
+                            <input type="number" class="box-qty" id="boxQty3" min="0" step="1" value="0" />
+                            <span style="font-size:13px;color:#86868b;">шт</span>
+                            <button type="button" class="btn-remove" onclick="removeBoxRow(3)">✕</button>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="addBoxRow()">+ Добавить коробку</button>
+                    <button type="button" class="btn-add" onclick="addBoxRow()">+ Добавить коробку</button>
                 </div>
             </div>
 
-            <div class="calculation-preview" id="calculationPreview">
-                <div style="font-size:12px;color:#666;margin-bottom:8px;">📊 ПРЕДВАРИТЕЛЬНЫЙ РАСЧЕТ</div>
-                <div class="calc-section">📄 ПАКЕТ</div>
-                <div class="calc-row"><span class="calc-label" id="previewPackageLabel">Пакет</span><span class="calc-value" id="previewPackage">0 шт</span></div>
-                <div class="calc-section">🎨 ДОПОЛНИТЕЛЬНО</div>
-                <div class="calc-row"><span class="calc-label">Шапки (NALEPKING)</span><span class="calc-value" id="previewCaps">0 шт</span></div>
-                <div class="calc-row"><span class="calc-label">Неформалки</span><span class="calc-value" id="previewNonFormal">0 шт</span></div>
-                <div class="calc-row"><span class="calc-label">Скобы (×2)</span><span class="calc-value" id="previewStaples">0 шт</span></div>
-                <div class="calc-row"><span class="calc-label">Картон (вкладыши)</span><span class="calc-value" id="previewCardboard">0 шт</span></div>
-                <div class="calc-section">📦 СПЕЦИАЛЬНЫЕ</div>
-                <div class="calc-row"><span class="calc-label">ASTP 180*180*40</span><span class="calc-value" id="previewASTP">0 шт</span></div>
-                <div class="calc-row"><span class="calc-label">Кванты 170*250*60</span><span class="calc-value" id="previewQuant">0 шт</span></div>
-                <div class="calc-section">📦 КОРОБКИ</div>
-                <div id="previewBoxes"><div class="calc-row"><span class="calc-label" style="color:#555;">Нет коробок</span><span class="calc-value" style="color:#555;">—</span></div></div>
-                <div class="calc-row calc-total"><span class="calc-label">📦 ИТОГО позиций</span><span class="calc-value" id="previewTotal">0 шт</span></div>
+            <!-- РАСЧЕТ -->
+            <div class="calc-preview" id="calculationPreview">
+                <div class="calc-header">Предварительный расчет</div>
+
+                <div class="calc-section">Пакет</div>
+                <div class="calc-row">
+                    <span class="calc-label" id="previewPackageLabel">Пакет</span>
+                    <span class="calc-value" id="previewPackage">0 шт</span>
+                </div>
+
+                <div class="calc-section">Дополнительно</div>
+                <div class="calc-row">
+                    <span class="calc-label">Шапки (NALEPKING)</span>
+                    <span class="calc-value" id="previewCaps">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Неформалки</span>
+                    <span class="calc-value" id="previewNonFormal">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Скобы (×2)</span>
+                    <span class="calc-value" id="previewStaples">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Картон</span>
+                    <span class="calc-value" id="previewCardboard">0 шт</span>
+                </div>
+
+                <div class="calc-section">Специальные</div>
+                <div class="calc-row">
+                    <span class="calc-label">ASTP</span>
+                    <span class="calc-value" id="previewASTP">0 шт</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Кванты</span>
+                    <span class="calc-value" id="previewQuant">0 шт</span>
+                </div>
+
+                <div class="calc-section">Коробки</div>
+                <div id="previewBoxes">
+                    <div class="calc-row">
+                        <span class="calc-label" style="color:#aeaeb2;">Нет коробок</span>
+                        <span class="calc-value" style="color:#aeaeb2;">—</span>
+                    </div>
+                </div>
+
+                <div class="calc-row calc-total">
+                    <span class="calc-label">📦 ИТОГО позиций</span>
+                    <span class="calc-value" id="previewTotal">0 шт</span>
+                </div>
             </div>
 
-            <div class="buttons">
+            <!-- КНОПКИ -->
+            <div class="actions">
                 <button type="button" class="btn btn-secondary" onclick="resetForm()">❌ Очистить</button>
                 <button type="submit" class="btn btn-success" id="submitBtn">✅ Отгрузить</button>
             </div>
+
         </form>
+
     </div>
 
+    <!-- ===== TOAST ===== -->
     <div class="toast" id="toast"></div>
 
+    <!-- ========================================== -->
+    <!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ -->
+    <!-- ========================================== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
     <script>
         // ============================================
-        // НАСТРОЙКА SUPABASE (ТОЛЬКО ОДИН РАЗ!)
+        // НАСТРОЙКА SUPABASE
         // ============================================
         var SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
-        var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
+        var SUPABASE_ANON_KEY =
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
 
-        // Проверяем, не создан ли уже клиент
         if (typeof window.supabaseClient === 'undefined') {
             window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
@@ -591,15 +1021,14 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('✅ Страница загружена');
 
-            // 1. АВТОМАТИЧЕСКАЯ ДАТА
+            // Автоматическая дата
             var today = new Date();
             var day = String(today.getDate()).padStart(2, '0');
             var month = String(today.getMonth() + 1).padStart(2, '0');
             var year = today.getFullYear();
             document.getElementById('orderDate').value = year + '-' + month + '-' + day;
-            console.log('📅 Дата установлена:', document.getElementById('orderDate').value);
 
-            // 2. ФОРМАТ
+            // Формат
             var formatBtns = document.querySelectorAll('.format-btn');
             for (var i = 0; i < formatBtns.length; i++) {
                 (function(btn) {
@@ -622,14 +1051,13 @@
                 })(formatBtns[i]);
             }
 
-            // 3. ОБРАБОТЧИКИ
+            // Обработчики
             document.getElementById('materialQuantity').addEventListener('input', updatePreview);
             document.getElementById('otherFormatSelect').addEventListener('change', updatePreview);
             document.getElementById('hasCaps').addEventListener('change', updatePreview);
             document.getElementById('hasNonFormal').addEventListener('change', updatePreview);
             document.getElementById('hasCardboard').addEventListener('change', updatePreview);
 
-            // ASTP
             document.getElementById('hasASTP').addEventListener('change', function() {
                 var input = document.getElementById('astpQuantity');
                 input.disabled = !this.checked;
@@ -638,7 +1066,6 @@
             });
             document.getElementById('astpQuantity').addEventListener('input', updatePreview);
 
-            // Кванты
             document.getElementById('hasQuant').addEventListener('change', function() {
                 var input = document.getElementById('quantQuantity');
                 input.disabled = !this.checked;
@@ -647,7 +1074,6 @@
             });
             document.getElementById('quantQuantity').addEventListener('input', updatePreview);
 
-            // Коробки
             document.getElementById('hasBoxes').addEventListener('change', function() {
                 var section = document.getElementById('boxesSection');
                 if (this.checked) {
@@ -658,7 +1084,6 @@
                 updatePreview();
             });
 
-            // Коробки - все
             var boxTypes = document.querySelectorAll('.box-type');
             var boxQtys = document.querySelectorAll('.box-qty');
             for (var k = 0; k < boxTypes.length; k++) {
@@ -670,13 +1095,9 @@
                 boxQtys[l].addEventListener('input', updatePreview);
             }
 
-            // Отправка
             document.getElementById('orderForm').addEventListener('submit', submitOrder);
 
-            // 4. ПРОВЕРКА ПОДКЛЮЧЕНИЯ
             checkConnection();
-
-            // 5. ПЕРВЫЙ РАСЧЕТ
             updatePreview();
         });
 
@@ -690,15 +1111,13 @@
             supabase.from('materials').select('count').limit(1)
                 .then(function(result) {
                     if (result.error) throw result.error;
-                    statusEl.innerHTML = '✅ Подключено';
-                    bar.className = 'status-bar';
-                    console.log('✅ Подключение к Supabase успешно');
+                    statusEl.textContent = 'Подключено';
+                    bar.className = 'status-badge';
                 })
                 .catch(function(error) {
-                    console.error('❌ Ошибка подключения:', error);
-                    statusEl.innerHTML = '❌ Ошибка';
-                    bar.className = 'status-bar error';
-                    showToast('❌ Не удалось подключиться к базе данных', 'error');
+                    console.error('Ошибка:', error);
+                    statusEl.textContent = 'Ошибка';
+                    bar.className = 'status-badge error';
                 });
         }
 
@@ -713,7 +1132,7 @@
             div.className = 'box-item';
             div.id = 'boxRow' + boxRowCount;
             div.innerHTML =
-                '<label>📦</label>' +
+                '<span class="box-label">📦</span>' +
                 '<select class="box-type" id="boxType' + boxRowCount + '">' +
                 '<option value="MB_SMALL">Малый MB</option>' +
                 '<option value="AMAZON">Амазон</option>' +
@@ -722,8 +1141,8 @@
                 '<option value="BOY_BIG">Пацанские большие</option>' +
                 '</select>' +
                 '<input type="number" class="box-qty" id="boxQty' + boxRowCount + '" min="0" step="1" value="0">' +
-                '<span style="font-size:12px;color:#888;">шт</span>' +
-                '<button type="button" class="btn btn-danger" onclick="removeBoxRow(' + boxRowCount + ')">✕</button>';
+                '<span style="font-size:13px;color:#86868b;">шт</span>' +
+                '<button type="button" class="btn-remove" onclick="removeBoxRow(' + boxRowCount + ')">✕</button>';
             grid.appendChild(div);
 
             var typeEl = div.querySelector('.box-type');
@@ -857,7 +1276,7 @@
             var boxesContainer = document.getElementById('previewBoxes');
             if (calc.boxes.length === 0) {
                 boxesContainer.innerHTML =
-                    '<div class="calc-row"><span class="calc-label" style="color:#555;">Нет коробок</span><span class="calc-value" style="color:#555;">—</span></div>';
+                    '<div class="calc-row"><span class="calc-label" style="color:#aeaeb2;">Нет коробок</span><span class="calc-value" style="color:#aeaeb2;">—</span></div>';
             } else {
                 var html = '';
                 for (var i = 0; i < calc.boxes.length; i++) {
@@ -875,6 +1294,7 @@
         // ============================================
         function submitOrder(event) {
             event.preventDefault();
+
             var submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Отправка...';
@@ -1006,5 +1426,6 @@
             toast._timeout = setTimeout(function() { toast.classList.remove('show'); }, 3000);
         }
     </script>
+
 </body>
 </html>
