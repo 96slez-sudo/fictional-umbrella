@@ -27,7 +27,7 @@
         }
 
         .container {
-            max-width: 1300px;
+            max-width: 1400px;
             width: 100%;
             background: #ffffff;
             border-radius: 28px;
@@ -251,10 +251,6 @@
             border-color: #ff9500;
             background: #fff8f0;
         }
-        .balance-input.saved {
-            border-color: #34c759;
-            background: #e8f9ed;
-        }
 
         .type-select {
             padding: 6px 10px;
@@ -269,6 +265,26 @@
         .type-select:focus {
             outline: none;
             border-color: #007aff;
+        }
+
+        .badge-diff {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-diff.positive {
+            background: #e8f9ed;
+            color: #34c759;
+        }
+        .badge-diff.negative {
+            background: #fde8e8;
+            color: #ff3b30;
+        }
+        .badge-diff.zero {
+            background: #f5f5f7;
+            color: #86868b;
         }
 
         .filters {
@@ -340,48 +356,12 @@
             cursor: not-allowed;
         }
 
-        .btn-danger {
-            padding: 8px 20px;
-            border: none;
-            border-radius: 12px;
-            background: #ff3b30;
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-        }
-        .btn-danger:hover {
-            background: #d63031;
-        }
-
         .actions-row {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
             align-items: center;
             margin-top: 16px;
-        }
-
-        .badge-diff {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .badge-diff.positive {
-            background: #e8f9ed;
-            color: #34c759;
-        }
-        .badge-diff.negative {
-            background: #fde8e8;
-            color: #ff3b30;
-        }
-        .badge-diff.zero {
-            background: #f5f5f7;
-            color: #86868b;
         }
 
         .toast {
@@ -448,8 +428,7 @@
             .actions-row {
                 flex-direction: column;
             }
-            .actions-row .btn-success,
-            .actions-row .btn-danger {
+            .actions-row .btn-success {
                 width: 100%;
                 justify-content: center;
             }
@@ -506,7 +485,7 @@
 
         <!-- ===== ЗАГОЛОВОК ===== -->
         <h1 class="page-title">✏️ Ручной приход / расход</h1>
-        <p class="page-subtitle">Введите приход или расход материалов вручную</p>
+        <p class="page-subtitle">Введите <strong>фактическое</strong> количество или укажите приход/расход вручную</p>
 
         <!-- ===== СТАТИСТИКА ===== -->
         <div class="stats-row">
@@ -585,7 +564,6 @@
 
         var materials = [];
         var changes = {};
-        var actualBalances = {};
 
         document.addEventListener('DOMContentLoaded', function() {
             var today = new Date();
@@ -623,7 +601,6 @@
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#86868b;">⏳ Загрузка...</td></tr>';
 
             changes = {};
-            actualBalances = {};
 
             supabase.from('materials').select('*').order('category').order('name')
                 .then(function(result) {
@@ -647,7 +624,6 @@
 
                     for (var j = 0; j < materials.length; j++) {
                         materials[j].balance = balances[materials[j].id] || 0;
-                        actualBalances[materials[j].id] = materials[j].balance;
                     }
 
                     renderTable();
@@ -682,15 +658,24 @@
             for (var i = 0; i < filtered.length; i++) {
                 var m = filtered[i];
                 var balance = m.balance || 0;
-                var actual = changes[m.id] !== undefined ? changes[m.id].actual : balance;
-                var isChanged = changes[m.id] !== undefined && changes[m.id].actual !== balance;
-                var categoryClass = (m.category || '').toLowerCase();
+                var isChanged = changes[m.id] !== undefined;
 
                 var changeData = changes[m.id] || { type: 'income', quantity: '', actual: balance };
+
+                // Фактическое = текущий остаток + изменение
+                var actual = balance;
+                if (isChanged && changeData.quantity && parseFloat(changeData.quantity) > 0) {
+                    var qty = parseFloat(changeData.quantity);
+                    actual = changeData.type === 'income' ? balance + qty : balance - qty;
+                } else if (isChanged && changeData.actual !== undefined) {
+                    actual = changeData.actual;
+                }
 
                 var diff = actual - balance;
                 var diffClass = diff > 0 ? 'positive' : diff < 0 ? 'negative' : 'zero';
                 var diffText = diff > 0 ? '+' + diff : diff;
+
+                var categoryClass = (m.category || '').toLowerCase();
 
                 html += '<tr>' +
                     '<td>' + (i + 1) + '</td>' +
@@ -709,8 +694,7 @@
                     '<td><span class="badge-diff ' + diffClass + '">' + diffText + '</span></td>' +
                     '<td>' +
                     '<select class="type-select" id="type_' + m.id + '" ' +
-                    (isChanged ? '' : 'disabled') +
-                    ' onchange="onTypeChange(\'' + m.id + '\', this.value)">' +
+                    'onchange="onTypeChange(\'' + m.id + '\', this.value)">' +
                     '<option value="income" ' + (changeData.type === 'income' ? 'selected' : '') + '>➕ Приход</option>' +
                     '<option value="expense" ' + (changeData.type === 'expense' ? 'selected' : '') + '>➖ Расход</option>' +
                     '</select>' +
@@ -721,8 +705,7 @@
                     'min="0" step="0.001" ' +
                     'value="' + (changeData.quantity || '') + '" ' +
                     'oninput="onQuantityChange(\'' + m.id + '\', this.value)" ' +
-                    (isChanged ? '' : 'disabled') +
-                    ' placeholder="0">' +
+                    'placeholder="0">' +
                     '</td>' +
                     '<td>' +
                     (isChanged ? '<span style="color:#ff9500;font-weight:500;">✏️</span>' : '') +
@@ -749,9 +732,9 @@
 
             changes[id].actual = numValue;
 
+            // Вычисляем разницу
             var diff = numValue - currentBalance;
 
-            // Автоматически заполняем количество и тип
             if (diff !== 0) {
                 changes[id].quantity = Math.abs(diff);
                 changes[id].type = diff > 0 ? 'income' : 'expense';
@@ -765,31 +748,51 @@
             var typeSelect = document.getElementById('type_' + id);
             var input = document.getElementById('actual_' + id);
 
-            if (qtyInput) {
-                qtyInput.value = changes[id].quantity;
-                qtyInput.disabled = false;
-            }
-            if (typeSelect) {
-                typeSelect.value = changes[id].type;
-                typeSelect.disabled = false;
-            }
-            if (input) {
-                input.className = 'balance-input changed';
-            }
+            if (qtyInput) qtyInput.value = changes[id].quantity;
+            if (typeSelect) typeSelect.value = changes[id].type;
+            if (input) input.className = 'balance-input changed';
 
             renderTable();
             updateStats();
         }
 
         function onTypeChange(id, value) {
-            if (!changes[id]) return;
-            changes[id].type = value;
+            if (!changes[id]) {
+                changes[id] = { type: value, quantity: '', actual: 0 };
+            } else {
+                changes[id].type = value;
+            }
+
+            // Пересчитываем фактическое
+            var material = materials.find(function(m) { return m.id === id; });
+            if (material && changes[id].quantity) {
+                var qty = parseFloat(changes[id].quantity) || 0;
+                if (qty > 0) {
+                    var input = document.getElementById('actual_' + id);
+                    var newActual = changes[id].type === 'income' ? material.balance + qty : material.balance - qty;
+                    if (input) input.value = newActual;
+                }
+            }
+
+            renderTable();
             updateStats();
         }
 
         function onQuantityChange(id, value) {
-            if (!changes[id]) return;
-            changes[id].quantity = value;
+            if (!changes[id]) {
+                changes[id] = { type: 'income', quantity: value, actual: 0 };
+            } else {
+                changes[id].quantity = value;
+            }
+
+            // Пересчитываем фактическое
+            var material = materials.find(function(m) { return m.id === id; });
+            if (material && value && parseFloat(value) > 0) {
+                var qty = parseFloat(value);
+                var input = document.getElementById('actual_' + id);
+                var newActual = changes[id].type === 'income' ? material.balance + qty : material.balance - qty;
+                if (input) input.value = newActual;
+            }
 
             var input = document.getElementById('qty_' + id);
             if (input) {
@@ -800,6 +803,7 @@
                 }
             }
 
+            renderTable();
             updateStats();
         }
 
@@ -856,7 +860,7 @@
                     movement_type: item.type === 'income' ? 'INCOME' : 'EXPENSE',
                     quantity: item.quantity,
                     source: 'Ручная корректировка остатка',
-                    notes: 'Изменение остатка'
+                    notes: 'Фактическое количество: ' + (changes[item.id] ? changes[item.id].actual : '')
                 }]).select();
 
                 promises.push(promise);
