@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>📦 Отгрузка</title>
+    <title>📦 Отгрузка заказа</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
     </script>
@@ -200,9 +200,9 @@
         .format-item {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             background: #ffffff;
-            padding: 4px 10px 4px 6px;
+            padding: 4px 8px 4px 6px;
             border-radius: 10px;
             border: 1.5px solid #e5e5ea;
             cursor: pointer;
@@ -224,7 +224,7 @@
             flex-shrink: 0;
         }
         .format-item label {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             color: #1d1d1f;
             cursor: pointer;
@@ -232,7 +232,7 @@
             flex: 1;
         }
         .format-item input[type="number"] {
-            width: 50px;
+            width: 46px;
             padding: 3px 4px;
             font-size: 12px;
             border-radius: 8px;
@@ -689,7 +689,7 @@
                 </div>
             </div>
 
-            <!-- ===== УПАКОВКИ ===== -->
+            <!-- ===== УПАКОВКА ===== -->
             <div class="section">
                 <div class="section-title">Упаковка</div>
                 <div class="checkbox-group">
@@ -1156,117 +1156,113 @@
         }
 
         // ============================================
-        // ОТПРАВКА ЗАКАЗА
+        // ОТПРАВКА ЗАКАЗА С ПОЛНЫМ СБРОСОМ
         // ============================================
-        // ============================================
-// ОТПРАВКА ЗАКАЗА С АВТООБНОВЛЕНИЕМ
-// ============================================
-function submitOrder(event) {
-    event.preventDefault();
+        function submitOrder(event) {
+            event.preventDefault();
 
-    var submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = '⏳ Отправка...';
+            var submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Отправка...';
 
-    try {
-        var calc = calculate();
-        var boxes = [];
-        for (var i = 0; i < calc.boxes.length; i++) {
-            boxes.push({ type: calc.boxes[i].code, quantity: calc.boxes[i].quantity });
-        }
+            try {
+                var calc = calculate();
 
-        // Собираем форматы
-        var formatsData = [];
-        for (var j = 0; j < calc.formats.length; j++) {
-            formatsData.push({
-                name: calc.formats[j].name,
-                code: calc.formats[j].code,
-                quantity: calc.formats[j].quantity
-            });
-        }
+                if (calc.formats.length === 0 && calc.boxes.length === 0) {
+                    showToast('❌ Выберите хотя бы один формат или коробку', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ Отгрузить';
+                    return;
+                }
 
-        var orderData = {
-            order_number: document.getElementById('orderNumber').value.trim(),
-            order_date: document.getElementById('orderDate').value,
-            material_type: document.getElementById('materialType').value,
-            material_quantity: parseInt(document.getElementById('materialQuantity').value) || 0,
-            formats: formatsData,
-            has_caps: document.getElementById('hasCaps').checked,
-            has_non_formal: document.getElementById('hasNonFormal').checked,
-            has_other_pack: document.getElementById('hasOtherPack').checked,
-            has_cardboard: document.getElementById('hasCardboard').checked,
-            has_astp: document.getElementById('hasASTP').checked,
-            astp_quantity: parseInt(document.getElementById('astpQuantity').value) || 0,
-            has_quant: document.getElementById('hasQuant').checked,
-            quant_quantity: parseInt(document.getElementById('quantQuantity').value) || 0,
-            has_boxes: document.getElementById('hasBoxes').checked,
-            boxes: boxes,
-            calculation: calc
-        };
+                var boxes = [];
+                for (var i = 0; i < calc.boxes.length; i++) {
+                    boxes.push({ type: calc.boxes[i].code, quantity: calc.boxes[i].quantity });
+                }
 
-        if (!orderData.order_number) {
-            showToast('❌ Введите номер заказа', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = '✅ Отгрузить';
-            return;
-        }
+                var formatsData = [];
+                for (var j = 0; j < calc.formats.length; j++) {
+                    formatsData.push({
+                        name: calc.formats[j].name,
+                        code: calc.formats[j].code,
+                        quantity: calc.formats[j].quantity
+                    });
+                }
 
-        if (orderData.material_quantity < 1 && !orderData.has_boxes && orderData.formats.length === 0) {
-            showToast('❌ Укажите количество материала или коробки', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = '✅ Отгрузить';
-            return;
-        }
+                var orderData = {
+                    order_number: document.getElementById('orderNumber').value.trim(),
+                    order_date: document.getElementById('orderDate').value,
+                    material_type: document.getElementById('materialType').value,
+                    material_quantity: parseInt(document.getElementById('materialQuantity').value) || 0,
+                    formats: formatsData,
+                    has_caps: document.getElementById('hasCaps').checked,
+                    has_non_formal: document.getElementById('hasNonFormal').checked,
+                    has_other_pack: document.getElementById('hasOtherPack').checked,
+                    has_cardboard: document.getElementById('hasCardboard').checked,
+                    has_astp: document.getElementById('hasASTP').checked,
+                    astp_quantity: parseInt(document.getElementById('astpQuantity').value) || 0,
+                    has_quant: document.getElementById('hasQuant').checked,
+                    quant_quantity: parseInt(document.getElementById('quantQuantity').value) || 0,
+                    has_boxes: document.getElementById('hasBoxes').checked,
+                    boxes: boxes,
+                    calculation: calc
+                };
 
-        console.log('📦 Отправка заказа:', orderData);
+                if (!orderData.order_number) {
+                    showToast('❌ Введите номер заказа', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ Отгрузить';
+                    return;
+                }
 
-        supabase.from('orders').insert([orderData]).select()
-            .then(function(result) {
-                if (result.error) throw result.error;
-                showToast('✅ Заказ ' + orderData.order_number + ' успешно отгружен!', 'success');
-                console.log('✅ Заказ сохранен:', result.data);
-                
-                // ============================================
-                // ОБНОВЛЕНИЕ СТРАНИЦЫ ПОСЛЕ УСПЕШНОЙ ОТГРУЗКИ
-                // ============================================
-                setTimeout(function() {
-                    // Сброс формы
-                    resetForm();
-                    // Обновляем предпросмотр
-                    updatePreview();
-                    // Показываем уведомление
-                    showToast('🔄 Страница обновлена', 'info');
-                }, 1500);
-                
-            })
-            .catch(function(error) {
+                console.log('📦 Отправка заказа:', orderData);
+
+                supabase.from('orders').insert([orderData]).select()
+                    .then(function(result) {
+                        if (result.error) throw result.error;
+                        showToast('✅ Заказ ' + orderData.order_number + ' успешно отгружен!', 'success');
+                        console.log('✅ Заказ сохранен:', result.data);
+
+                        // ============================================
+                        // ПОЛНЫЙ СБРОС ФОРМЫ (ВКЛЮЧАЯ ГАЛОЧКИ)
+                        // ============================================
+                        setTimeout(function() {
+                            resetForm();
+                            updatePreview();
+                            showToast('🔄 Форма очищена, готово к следующему заказу', 'info');
+                        }, 1200);
+
+                    })
+                    .catch(function(error) {
+                        console.error('❌ Ошибка:', error);
+                        showToast('❌ Ошибка: ' + error.message, 'error');
+                    })
+                    .finally(function() {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '✅ Отгрузить';
+                    });
+
+            } catch (error) {
                 console.error('❌ Ошибка:', error);
                 showToast('❌ Ошибка: ' + error.message, 'error');
-            })
-            .finally(function() {
                 submitBtn.disabled = false;
                 submitBtn.textContent = '✅ Отгрузить';
-            });
+            }
+        }
 
-    } catch (error) {
-        console.error('❌ Ошибка:', error);
-        showToast('❌ Ошибка: ' + error.message, 'error');
-        submitBtn.disabled = false;
-        submitBtn.textContent = '✅ Отгрузить';
-    }
-}
         // ============================================
-        // ВСПОМОГАТЕЛЬНЫЕ
+        // ПОЛНЫЙ СБРОС ФОРМЫ (ВКЛЮЧАЯ ГАЛОЧКИ)
         // ============================================
         function resetForm() {
             document.getElementById('orderNumber').value = '';
+            document.getElementById('materialQuantity').value = 1;
 
-            // Сброс форматов
+            // Сброс форматов (А6 остается активным, остальные снимаются)
             var formatItems = document.querySelectorAll('.format-item');
             for (var i = 0; i < formatItems.length; i++) {
                 var checkbox = formatItems[i].querySelector('input[type="checkbox"]');
                 var qtyInput = formatItems[i].querySelector('.format-qty');
-                if (i === 0) {
+                if (formatItems[i].getAttribute('data-code') === 'A6_BAG') {
                     checkbox.checked = true;
                     formatItems[i].classList.add('active');
                     qtyInput.disabled = false;
@@ -1279,18 +1275,22 @@ function submitOrder(event) {
                 }
             }
 
+            // СБРАСЫВАЕМ ВСЕ ГАЛОЧКИ
             document.getElementById('hasCaps').checked = false;
             document.getElementById('hasOtherPack').checked = false;
             document.getElementById('hasCardboard').checked = false;
-            document.getElementById('hasQuant').checked = false;
-            document.getElementById('quantQuantity').value = 0;
-            document.getElementById('quantQuantity').disabled = true;
             document.getElementById('hasASTP').checked = false;
+            document.getElementById('hasQuant').checked = false;
+            document.getElementById('hasBoxes').checked = false;
+
+            // Сбрасываем количество в специальных полях
             document.getElementById('astpQuantity').value = 0;
             document.getElementById('astpQuantity').disabled = true;
-            document.getElementById('hasBoxes').checked = false;
+            document.getElementById('quantQuantity').value = 0;
+            document.getElementById('quantQuantity').disabled = true;
             document.getElementById('boxesSection').style.display = 'none';
 
+            // Сбрасываем коробки
             for (var j = 1; j <= 2; j++) {
                 var qtyEl = document.getElementById('boxQty' + j);
                 if (qtyEl) qtyEl.value = 0;
@@ -1302,7 +1302,7 @@ function submitOrder(event) {
             boxRowCount = 2;
 
             updatePreview();
-            showToast('🔄 Форма очищена', 'info');
+            showToast('🔄 Форма полностью очищена', 'info');
         }
 
         function showToast(message, type) {
