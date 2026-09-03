@@ -1191,21 +1191,21 @@
 
         var orderData = {
             order_number: document.getElementById('orderNumber').value.trim(),
-            order_date: document.getElementById('orderDate').value,
-            material_type: document.getElementById('materialType').value,
-            material_quantity: parseInt(document.getElementById('materialQuantity').value) || 0,
-            formats: formatsData,
-            has_caps: document.getElementById('hasCaps').checked,
-            has_non_formal: false,                       // ← УБРАЛИ
-            has_other_pack: false,                       // ← УБРАЛИ
-            has_cardboard: document.getElementById('hasCardboard').checked,
-            has_astp: document.getElementById('hasASTP').checked,
-            astp_quantity: parseInt(document.getElementById('astpQuantity').value) || 0,
-            has_quant: document.getElementById('hasQuant').checked,
-            quant_quantity: parseInt(document.getElementById('quantQuantity').value) || 0,
-            has_boxes: document.getElementById('hasBoxes').checked,
-            boxes: boxes,
-            calculation: calc
+    order_date: document.getElementById('orderDate').value,
+    material_type: null,           // ← NULL
+    material_quantity: 0,          // ← 0
+    formats: formatsData,
+    has_caps: document.getElementById('hasCaps').checked,
+    has_non_formal: false,
+    has_other_pack: false,
+    has_cardboard: document.getElementById('hasCardboard').checked,
+    has_astp: document.getElementById('hasASTP').checked,
+    astp_quantity: parseInt(document.getElementById('astpQuantity').value) || 0,
+    has_quant: document.getElementById('hasQuant').checked,
+    quant_quantity: parseInt(document.getElementById('quantQuantity').value) || 0,
+    has_boxes: document.getElementById('hasBoxes').checked,
+    boxes: boxes,
+    calculation: calc
         };
 
         if (!orderData.order_number) {
