@@ -1,917 +1,393 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>✏️ Остатки</title>
+<script>
+    var SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
+    var SUPABASE_ANON_KEY =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-    </script>
+    if (typeof window.supabaseClient === 'undefined') {
+        window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+    var supabase = window.supabaseClient;
 
-    <style>
-        /* ===== APPLE STYLE ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    var materials = [];
+    var changes = {};
+    var filteredMaterials = [];
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
-            background: #f5f5f7;
-            color: #1d1d1f;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-        }
+    document.addEventListener('DOMContentLoaded', function() {
+        var today = new Date();
+        var day = String(today.getDate()).padStart(2, '0');
+        var month = String(today.getMonth() + 1).padStart(2, '0');
+        var year = today.getFullYear();
+        document.getElementById('balanceDate').value = year + '-' + month + '-' + day;
 
-        .container {
-            max-width: 1400px;
-            width: 100%;
-            background: #ffffff;
-            border-radius: 28px;
-            padding: 28px 30px 36px;
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.06);
-        }
+        checkConnection();
+        loadBalances();
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 14px;
-            border-bottom: 1px solid #e5e5ea;
-            margin-bottom: 22px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
+        document.getElementById('searchInput').addEventListener('input', function() {
+            applyFilters();
+        });
+        document.getElementById('categoryFilter').addEventListener('change', function() {
+            applyFilters();
+        });
+    });
 
-        .logo {
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-            color: #1d1d1f;
-        }
-        .logo span {
-            font-weight: 300;
-            color: #86868b;
-        }
+    function checkConnection() {
+        var statusEl = document.getElementById('connectionStatus');
+        var bar = document.getElementById('statusBar');
 
-        .nav {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-        }
-        .nav a {
-            padding: 6px 14px;
-            border-radius: 18px;
-            font-size: 13px;
-            font-weight: 500;
-            color: #1d1d1f;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            background: #f5f5f7;
-        }
-        .nav a:hover {
-            background: #e5e5ea;
-        }
-        .nav a.active {
-            background: #007aff;
-            color: #ffffff;
-            box-shadow: 0 2px 10px rgba(0, 122, 255, 0.25);
-        }
+        supabase.from('materials').select('count').limit(1)
+            .then(function(result) {
+                if (result.error) throw result.error;
+                statusEl.textContent = 'Подключено';
+                bar.className = 'status-badge';
+            })
+            .catch(function(error) {
+                console.error('Ошибка:', error);
+                statusEl.textContent = 'Ошибка';
+                bar.className = 'status-badge error';
+            });
+    }
 
-        .status-badge {
-            font-size: 12px;
-            color: #34c759;
-            background: #e8f9ed;
-            padding: 3px 12px;
-            border-radius: 18px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            white-space: nowrap;
-        }
-        .status-badge .dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #34c759;
-            display: inline-block;
-        }
-        .status-badge.error {
-            color: #ff3b30;
-            background: #fde8e8;
-        }
-        .status-badge.error .dot {
-            background: #ff3b30;
-        }
+    function loadBalances() {
+        var tbody = document.getElementById('balancesBody');
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#86868b;">⏳ Загрузка...</td></tr>';
 
-        .page-title {
-            font-size: 26px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            margin-bottom: 4px;
-        }
-        .page-subtitle {
-            font-size: 16px;
-            color: #86868b;
-            margin-bottom: 22px;
-        }
+        changes = {};
 
-        .stats-row {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-        .stats-row .stat-item {
-            font-size: 14px;
-            color: #86868b;
-        }
-        .stats-row .stat-item strong {
-            color: #1d1d1f;
-            font-weight: 600;
-        }
+        supabase.from('materials').select('*').order('category').order('name')
+            .then(function(result) {
+                if (result.error) throw result.error;
+                materials = result.data;
+                return supabase.from('movements').select('material_id, quantity, movement_type');
+            })
+            .then(function(result) {
+                if (result.error) throw result.error;
 
-        .date-input {
-            padding: 6px 12px;
-            border: 1.5px solid #d2d2d6;
-            border-radius: 10px;
-            font-size: 14px;
-            font-family: inherit;
-            background: #ffffff;
-        }
-        .date-input:focus {
-            outline: none;
-            border-color: #007aff;
-            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
-        }
+                var balances = {};
+                for (var i = 0; i < result.data.length; i++) {
+                    var row = result.data[i];
+                    if (!balances[row.material_id]) balances[row.material_id] = 0;
+                    if (row.movement_type === 'INCOME') {
+                        balances[row.material_id] += row.quantity;
+                    } else {
+                        balances[row.material_id] -= row.quantity;
+                    }
+                }
 
-        .table-wrapper {
-            background: #f8f8fa;
-            border-radius: 16px;
-            border: 1px solid #e5e5ea;
-            overflow: hidden;
-        }
+                for (var j = 0; j < materials.length; j++) {
+                    materials[j].balance = balances[materials[j].id] || 0;
+                }
 
-        .table-scroll {
-            overflow-x: auto;
-        }
+                applyFilters();
+                updateStats();
+            })
+            .catch(function(error) {
+                console.error('Ошибка:', error);
+                tbody.innerHTML =
+                    '<tr><td colspan="9" style="text-align:center;padding:40px;color:#ff3b30;">❌ Ошибка загрузки</td></tr>';
+                showToast('❌ Ошибка загрузки: ' + error.message, 'error');
+            });
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
+    function applyFilters() {
+        var search = document.getElementById('searchInput').value.toLowerCase();
+        var category = document.getElementById('categoryFilter').value;
 
-        thead {
-            background: #f0f0f2;
-        }
-
-        th {
-            padding: 10px 14px;
-            text-align: left;
-            font-weight: 600;
-            color: #86868b;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            border-bottom: 1px solid #e5e5ea;
-            white-space: nowrap;
-            position: sticky;
-            top: 0;
-            background: #f0f0f2;
-            z-index: 10;
-        }
-
-        td {
-            padding: 10px 14px;
-            border-bottom: 1px solid #e5e5ea;
-            color: #1d1d1f;
-            vertical-align: middle;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        .material-name {
-            font-weight: 500;
-        }
-        .material-code {
-            font-size: 11px;
-            color: #86868b;
-            font-family: monospace;
-        }
-
-        .category-badge {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 500;
-        }
-        .category-badge.постоянные {
-            background: #e8f9ed;
-            color: #34c759;
-        }
-        .category-badge.поддоны {
-            background: #fff5e6;
-            color: #ff9500;
-        }
-        .category-badge.коробки {
-            background: #e8f0fe;
-            color: #007aff;
-        }
-        .category-badge.склад {
-            background: #f5e6ff;
-            color: #af52de;
-        }
-
-        .balance-input {
-            width: 110px;
-            padding: 6px 10px;
-            border: 1.5px solid #d2d2d6;
-            border-radius: 10px;
-            font-size: 14px;
-            font-family: inherit;
-            text-align: right;
-            transition: all 0.2s;
-            background: #ffffff;
-        }
-        .balance-input:focus {
-            outline: none;
-            border-color: #007aff;
-            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
-        }
-        .balance-input.changed {
-            border-color: #ff9500;
-            background: #fff8f0;
-        }
-
-        .type-select {
-            padding: 6px 10px;
-            border: 1.5px solid #d2d2d6;
-            border-radius: 10px;
-            font-size: 13px;
-            font-family: inherit;
-            background: #ffffff;
-            transition: border-color 0.2s;
-            min-width: 100px;
-        }
-        .type-select:focus {
-            outline: none;
-            border-color: #007aff;
-        }
-
-        .badge-diff {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .badge-diff.positive {
-            background: #e8f9ed;
-            color: #34c759;
-        }
-        .badge-diff.negative {
-            background: #fde8e8;
-            color: #ff3b30;
-        }
-        .badge-diff.zero {
-            background: #f5f5f7;
-            color: #86868b;
-        }
-
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 14px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .filters input,
-        .filters select {
-            padding: 8px 14px;
-            border: 1.5px solid #d2d2d6;
-            border-radius: 12px;
-            font-size: 14px;
-            font-family: inherit;
-            background: #ffffff;
-            transition: border-color 0.2s;
-        }
-        .filters input:focus,
-        .filters select:focus {
-            outline: none;
-            border-color: #007aff;
-            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
-        }
-        .filters input {
-            flex: 1;
-            min-width: 180px;
-        }
-
-        .btn-outline {
-            padding: 8px 18px;
-            border: 1.5px solid #d2d2d6;
-            border-radius: 12px;
-            background: #ffffff;
-            font-size: 14px;
-            font-weight: 500;
-            color: #1d1d1f;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .btn-outline:hover {
-            border-color: #007aff;
-            background: #f5f9ff;
-        }
-
-        .btn-success {
-            padding: 8px 20px;
-            border: none;
-            border-radius: 12px;
-            background: #34c759;
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-        }
-        .btn-success:hover {
-            background: #28a745;
-        }
-        .btn-success:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .actions-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-top: 16px;
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            padding: 14px 22px;
-            border-radius: 14px;
-            background: #1d1d1f;
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: 500;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            transform: translateY(80px);
-            opacity: 0;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
-            max-width: 380px;
-        }
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-        .toast.success {
-            background: #34c759;
-        }
-        .toast.error {
-            background: #ff3b30;
-        }
-        .toast.info {
-            background: #007aff;
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 12px;
-            }
-            .container {
-                padding: 18px 14px;
-                border-radius: 20px;
-            }
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .nav {
-                width: 100%;
-                justify-content: flex-start;
-            }
-            .nav a {
-                font-size: 12px;
-                padding: 5px 10px;
-            }
-            .page-title {
-                font-size: 22px;
-            }
-            .filters {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .filters input {
-                min-width: unset;
-            }
-            .actions-row {
-                flex-direction: column;
-            }
-            .actions-row .btn-success {
-                width: 100%;
-                justify-content: center;
-            }
-            .stats-row {
-                flex-direction: column;
-                gap: 8px;
-            }
-            .balance-input {
-                width: 70px;
-                font-size: 12px;
-            }
-            th,
-            td {
-                padding: 8px 8px;
-                font-size: 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 12px 10px;
-            }
-            .balance-input {
-                width: 60px;
-                font-size: 11px;
-                padding: 4px 4px;
-            }
-            .type-select {
-                font-size: 11px;
-                padding: 4px 6px;
-                min-width: 70px;
-            }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-
-        <!-- ===== ХЕДЕР ===== -->
-        <header class="header">
-            <div class="logo">📦 <span>Учет материалов</span></div>
-            <nav class="nav">
-                <a href="index.html">📋 Отгрузка</a>
-                <a href="dashboard.html">📊 Дашборд</a>
-                <a href="balances.html" class="active">✏️ Остатки</a>
-                <a href="reports.html">📈 Отчеты</a>
-            </nav>
-            <div class="status-badge" id="statusBar">
-                <span class="dot"></span>
-                <span id="connectionStatus">Подключение...</span>
-            </div>
-        </header>
-
-        <!-- ===== ЗАГОЛОВОК ===== -->
-        <h1 class="page-title">✏️ Ручной приход / расход</h1>
-        <p class="page-subtitle">Введите <strong>фактическое</strong> количество или укажите приход/расход вручную</p>
-
-        <!-- ===== СТАТИСТИКА ===== -->
-        <div class="stats-row">
-            <span class="stat-item">📦 Всего материалов: <strong id="totalMaterials">0</strong></span>
-            <span class="stat-item">🔄 Изменений: <strong id="changedCount">0</strong></span>
-            <span class="stat-item">
-                📅 <input type="date" class="date-input" id="balanceDate" />
-            </span>
-        </div>
-
-        <!-- ===== ФИЛЬТРЫ ===== -->
-        <div class="filters">
-            <input type="text" id="searchInput" placeholder="🔍 Поиск по названию..." />
-            <select id="categoryFilter">
-                <option value="">Все категории</option>
-                <option value="ПОСТОЯННЫЕ">Постоянные</option>
-                <option value="Поддоны">Поддоны</option>
-                <option value="Коробки">Коробки</option>
-                <option value="СКЛАД">Склад</option>
-            </select>
-            <button class="btn-outline" onclick="loadBalances()">🔄 Обновить</button>
-        </div>
-
-        <!-- ===== ТАБЛИЦА ===== -->
-        <div class="table-wrapper">
-            <div class="table-scroll">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width:30px;">#</th>
-                            <th style="min-width:180px;">Материал</th>
-                            <th style="min-width:90px;">Категория</th>
-                            <th style="min-width:120px;">Текущий остаток</th>
-                            <th style="min-width:120px;">Фактическое</th>
-                            <th style="min-width:80px;">Разница</th>
-                            <th style="min-width:100px;">Тип</th>
-                            <th style="min-width:100px;">Количество</th>
-                            <th style="width:60px;"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="balancesBody">
-                        <tr>
-                            <td colspan="9" style="text-align:center;padding:40px;color:#86868b;">
-                                ⏳ Загрузка данных...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- ===== КНОПКИ ===== -->
-        <div class="actions-row">
-            <button class="btn-success" id="saveAllBtn" onclick="saveAllChanges()">💾 Сохранить все изменения</button>
-            <button class="btn-outline" onclick="resetAll()">↩️ Сбросить всё</button>
-            <button class="btn-outline" onclick="window.location.href='dashboard.html'">📊 На дашборд</button>
-        </div>
-
-    </div>
-
-    <!-- ===== TOAST ===== -->
-    <div class="toast" id="toast"></div>
-
-    <!-- ========================================== -->
-    <!-- СКРИПТЫ -->
-    <!-- ========================================== -->
-    <script>
-        var SUPABASE_URL = 'https://nlthrnqhwqetkggzrbpy.supabase.co';
-        var SUPABASE_ANON_KEY =
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdGhybnFod3FldGtnZ3pyYnB5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg0NTcxNywiZXhwIjoyMTAzNDIxNzE3fQ.TtvprePUVmHRfexGhX0YTjttxf57iMNoWUmIJ-TMPPw';
-
-        if (typeof window.supabaseClient === 'undefined') {
-            window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
-        var supabase = window.supabaseClient;
-
-        var materials = [];
-        var changes = {};
-
-        document.addEventListener('DOMContentLoaded', function() {
-            var today = new Date();
-            var day = String(today.getDate()).padStart(2, '0');
-            var month = String(today.getMonth() + 1).padStart(2, '0');
-            var year = today.getFullYear();
-            document.getElementById('balanceDate').value = year + '-' + month + '-' + day;
-
-            checkConnection();
-            loadBalances();
-
-            document.getElementById('searchInput').addEventListener('input', renderTable);
-            document.getElementById('categoryFilter').addEventListener('change', renderTable);
+        filteredMaterials = materials.filter(function(m) {
+            var matchName = m.name.toLowerCase().includes(search);
+            var matchCategory = !category || m.category === category;
+            return matchName && matchCategory;
         });
 
-        function checkConnection() {
-            var statusEl = document.getElementById('connectionStatus');
-            var bar = document.getElementById('statusBar');
+        renderTable();
+    }
 
-            supabase.from('materials').select('count').limit(1)
-                .then(function(result) {
-                    if (result.error) throw result.error;
-                    statusEl.textContent = 'Подключено';
-                    bar.className = 'status-badge';
-                })
-                .catch(function(error) {
-                    console.error('Ошибка:', error);
-                    statusEl.textContent = 'Ошибка';
-                    bar.className = 'status-badge error';
-                });
+    function renderTable() {
+        var tbody = document.getElementById('balancesBody');
+
+        if (filteredMaterials.length === 0) {
+            tbody.innerHTML =
+                '<tr><td colspan="9" style="text-align:center;padding:40px;color:#86868b;">🔍 Ничего не найдено</td></tr>';
+            return;
         }
 
-        function loadBalances() {
-            var tbody = document.getElementById('balancesBody');
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#86868b;">⏳ Загрузка...</td></tr>';
+        var html = '';
+        for (var i = 0; i < filteredMaterials.length; i++) {
+            var m = filteredMaterials[i];
+            var balance = m.balance || 0;
+            var isChanged = changes[m.id] !== undefined;
 
-            changes = {};
+            var changeData = changes[m.id] || { type: 'income', quantity: '', actual: balance };
 
-            supabase.from('materials').select('*').order('category').order('name')
-                .then(function(result) {
-                    if (result.error) throw result.error;
-                    materials = result.data;
-                    return supabase.from('movements').select('material_id, quantity, movement_type');
-                })
-                .then(function(result) {
-                    if (result.error) throw result.error;
+            var actual = balance;
+            if (isChanged && changeData.quantity && parseFloat(changeData.quantity) > 0) {
+                var qty = parseFloat(changeData.quantity);
+                actual = changeData.type === 'income' ? balance + qty : balance - qty;
+            } else if (isChanged && changeData.actual !== undefined) {
+                actual = changeData.actual;
+            }
 
-                    var balances = {};
-                    for (var i = 0; i < result.data.length; i++) {
-                        var row = result.data[i];
-                        if (!balances[row.material_id]) balances[row.material_id] = 0;
-                        if (row.movement_type === 'INCOME') {
-                            balances[row.material_id] += row.quantity;
-                        } else {
-                            balances[row.material_id] -= row.quantity;
-                        }
-                    }
+            var diff = actual - balance;
+            var diffClass = diff > 0 ? 'positive' : diff < 0 ? 'negative' : 'zero';
+            var diffText = diff > 0 ? '+' + diff : diff;
 
-                    for (var j = 0; j < materials.length; j++) {
-                        materials[j].balance = balances[materials[j].id] || 0;
-                    }
+            var categoryClass = (m.category || '').toLowerCase();
 
-                    renderTable();
-                    updateStats();
-                })
-                .catch(function(error) {
-                    console.error('Ошибка:', error);
-                    tbody.innerHTML =
-                        '<tr><td colspan="9" style="text-align:center;padding:40px;color:#ff3b30;">❌ Ошибка загрузки</td></tr>';
-                    showToast('❌ Ошибка загрузки: ' + error.message, 'error');
-                });
+            html += '<tr>' +
+                '<td>' + (i + 1) + '</td>' +
+                '<td><span class="material-name">' + m.name + '</span><br><span class="material-code">' + m.code +
+                '</span></td>' +
+                '<td><span class="category-badge ' + categoryClass + '">' + (m.category || '—') + '</span></td>' +
+                '<td><strong>' + formatNumber(balance) + '</strong> ' + (m.unit || 'шт') + '</td>' +
+                '<td>' +
+                '<input type="number" class="balance-input ' + (isChanged ? 'changed' : '') +
+                '" id="actual_' + m.id + '" ' +
+                'min="0" step="0.001" ' +
+                'value="' + formatNumber(actual) + '" ' +
+                'oninput="onActualChange(\'' + m.id + '\', this.value)" ' +
+                'onfocus="this.select()" ' +
+                'style="width:110px;">' +
+                '</td>' +
+                '<td><span class="badge-diff ' + diffClass + '">' + diffText + '</span></td>' +
+                '<td>' +
+                '<select class="type-select" id="type_' + m.id + '" ' +
+                'onchange="onTypeChange(\'' + m.id + '\', this.value)">' +
+                '<option value="income" ' + (changeData.type === 'income' ? 'selected' : '') + '>➕ Приход</option>' +
+                '<option value="expense" ' + (changeData.type === 'expense' ? 'selected' : '') + '>➖ Расход</option>' +
+                '</select>' +
+                '</td>' +
+                '<td>' +
+                '<input type="number" class="balance-input ' + (isChanged ? 'changed' : '') +
+                '" id="qty_' + m.id + '" ' +
+                'min="0" step="0.001" ' +
+                'value="' + (changeData.quantity || '') + '" ' +
+                'oninput="onQuantityChange(\'' + m.id + '\', this.value)" ' +
+                'onfocus="this.select()" ' +
+                'placeholder="0">' +
+                '</td>' +
+                '<td>' +
+                (isChanged ? '<span style="color:#ff9500;font-weight:500;">✏️</span>' : '') +
+                '</td>' +
+                '</tr>';
         }
 
-        function renderTable() {
-            var search = document.getElementById('searchInput').value.toLowerCase();
-            var category = document.getElementById('categoryFilter').value;
-            var tbody = document.getElementById('balancesBody');
+        tbody.innerHTML = html;
+        updateStats();
+    }
 
-            var filtered = materials.filter(function(m) {
-                var matchName = m.name.toLowerCase().includes(search);
-                var matchCategory = !category || m.category === category;
-                return matchName && matchCategory;
-            });
+    function updateField(id, field, value) {
+        var el = document.getElementById(field + '_' + id);
+        if (el) {
+            el.value = value;
+        }
+    }
 
-            if (filtered.length === 0) {
-                tbody.innerHTML =
-                    '<tr><td colspan="9" style="text-align:center;padding:40px;color:#86868b;">🔍 Ничего не найдено</td></tr>';
-                return;
-            }
+    function onActualChange(id, value) {
+        var numValue = parseFloat(value);
+        if (isNaN(numValue)) return;
 
-            var html = '';
-            for (var i = 0; i < filtered.length; i++) {
-                var m = filtered[i];
-                var balance = m.balance || 0;
-                var isChanged = changes[m.id] !== undefined;
+        var material = materials.find(function(m) { return m.id === id; });
+        if (!material) return;
 
-                var changeData = changes[m.id] || { type: 'income', quantity: '', actual: balance };
+        var currentBalance = material.balance || 0;
 
-                // Фактическое = текущий остаток + изменение
-                var actual = balance;
-                if (isChanged && changeData.quantity && parseFloat(changeData.quantity) > 0) {
-                    var qty = parseFloat(changeData.quantity);
-                    actual = changeData.type === 'income' ? balance + qty : balance - qty;
-                } else if (isChanged && changeData.actual !== undefined) {
-                    actual = changeData.actual;
-                }
-
-                var diff = actual - balance;
-                var diffClass = diff > 0 ? 'positive' : diff < 0 ? 'negative' : 'zero';
-                var diffText = diff > 0 ? '+' + diff : diff;
-
-                var categoryClass = (m.category || '').toLowerCase();
-
-                html += '<tr>' +
-                    '<td>' + (i + 1) + '</td>' +
-                    '<td><span class="material-name">' + m.name + '</span><br><span class="material-code">' + m.code +
-                    '</span></td>' +
-                    '<td><span class="category-badge ' + categoryClass + '">' + (m.category || '—') + '</span></td>' +
-                    '<td><strong>' + formatNumber(balance) + '</strong> ' + (m.unit || 'шт') + '</td>' +
-                    '<td>' +
-                    '<input type="number" class="balance-input ' + (isChanged ? 'changed' : '') +
-                    '" id="actual_' + m.id + '" ' +
-                    'min="0" step="0.001" ' +
-                    'value="' + formatNumber(actual) + '" ' +
-                    'oninput="onActualChange(\'' + m.id + '\', this.value)" ' +
-                    'style="width:110px;">' +
-                    '</td>' +
-                    '<td><span class="badge-diff ' + diffClass + '">' + diffText + '</span></td>' +
-                    '<td>' +
-                    '<select class="type-select" id="type_' + m.id + '" ' +
-                    'onchange="onTypeChange(\'' + m.id + '\', this.value)">' +
-                    '<option value="income" ' + (changeData.type === 'income' ? 'selected' : '') + '>➕ Приход</option>' +
-                    '<option value="expense" ' + (changeData.type === 'expense' ? 'selected' : '') + '>➖ Расход</option>' +
-                    '</select>' +
-                    '</td>' +
-                    '<td>' +
-                    '<input type="number" class="balance-input ' + (isChanged ? 'changed' : '') +
-                    '" id="qty_' + m.id + '" ' +
-                    'min="0" step="0.001" ' +
-                    'value="' + (changeData.quantity || '') + '" ' +
-                    'oninput="onQuantityChange(\'' + m.id + '\', this.value)" ' +
-                    'placeholder="0">' +
-                    '</td>' +
-                    '<td>' +
-                    (isChanged ? '<span style="color:#ff9500;font-weight:500;">✏️</span>' : '') +
-                    '</td>' +
-                    '</tr>';
-            }
-
-            tbody.innerHTML = html;
-            updateStats();
+        if (!changes[id]) {
+            changes[id] = { type: 'income', quantity: '', actual: currentBalance };
         }
 
-        function onActualChange(id, value) {
-            var numValue = parseFloat(value);
-            if (isNaN(numValue)) return;
+        changes[id].actual = numValue;
 
-            var material = materials.find(function(m) { return m.id === id; });
-            if (!material) return;
+        var diff = numValue - currentBalance;
 
-            var currentBalance = material.balance || 0;
-
-            if (!changes[id]) {
-                changes[id] = { type: 'income', quantity: '', actual: currentBalance };
-            }
-
-            changes[id].actual = numValue;
-
-            // Вычисляем разницу
-            var diff = numValue - currentBalance;
-
-            if (diff !== 0) {
-                changes[id].quantity = Math.abs(diff);
-                changes[id].type = diff > 0 ? 'income' : 'expense';
-            } else {
-                changes[id].quantity = '';
-                changes[id].type = 'income';
-            }
-
-            // Обновляем поля
-            var qtyInput = document.getElementById('qty_' + id);
-            var typeSelect = document.getElementById('type_' + id);
-            var input = document.getElementById('actual_' + id);
-
-            if (qtyInput) qtyInput.value = changes[id].quantity;
-            if (typeSelect) typeSelect.value = changes[id].type;
-            if (input) input.className = 'balance-input changed';
-
-            renderTable();
-            updateStats();
+        if (diff !== 0) {
+            changes[id].quantity = Math.abs(diff);
+            changes[id].type = diff > 0 ? 'income' : 'expense';
+        } else {
+            changes[id].quantity = '';
+            changes[id].type = 'income';
         }
 
-        function onTypeChange(id, value) {
-            if (!changes[id]) {
-                changes[id] = { type: value, quantity: '', actual: 0 };
-            } else {
-                changes[id].type = value;
-            }
+        // Обновляем только нужные поля, НЕ перерисовывая таблицу
+        updateField(id, 'qty', changes[id].quantity);
+        updateField(id, 'type', changes[id].type);
 
-            // Пересчитываем фактическое
-            var material = materials.find(function(m) { return m.id === id; });
-            if (material && changes[id].quantity) {
-                var qty = parseFloat(changes[id].quantity) || 0;
-                if (qty > 0) {
-                    var input = document.getElementById('actual_' + id);
-                    var newActual = changes[id].type === 'income' ? material.balance + qty : material.balance - qty;
-                    if (input) input.value = newActual;
-                }
-            }
-
-            renderTable();
-            updateStats();
+        var input = document.getElementById('actual_' + id);
+        if (input) {
+            input.className = 'balance-input changed';
         }
 
-        function onQuantityChange(id, value) {
-            if (!changes[id]) {
-                changes[id] = { type: 'income', quantity: value, actual: 0 };
-            } else {
-                changes[id].quantity = value;
-            }
+        // Обновляем разницу (перерисовываем только ячейку)
+        updateDiffCell(id);
+        updateStats();
+    }
 
-            // Пересчитываем фактическое
-            var material = materials.find(function(m) { return m.id === id; });
-            if (material && value && parseFloat(value) > 0) {
-                var qty = parseFloat(value);
-                var input = document.getElementById('actual_' + id);
+    function updateDiffCell(id) {
+        var material = materials.find(function(m) { return m.id === id; });
+        if (!material) return;
+
+        var balance = material.balance || 0;
+        var actual = changes[id] ? changes[id].actual : balance;
+        var diff = actual - balance;
+
+        var cell = document.getElementById('diff_' + id);
+        if (cell) {
+            var diffClass = diff > 0 ? 'positive' : diff < 0 ? 'negative' : 'zero';
+            var diffText = diff > 0 ? '+' + diff : diff;
+            cell.className = 'badge-diff ' + diffClass;
+            cell.textContent = diffText;
+        }
+    }
+
+    function onTypeChange(id, value) {
+        if (!changes[id]) {
+            changes[id] = { type: value, quantity: '', actual: 0 };
+        } else {
+            changes[id].type = value;
+        }
+
+        var material = materials.find(function(m) { return m.id === id; });
+        if (material && changes[id].quantity) {
+            var qty = parseFloat(changes[id].quantity) || 0;
+            if (qty > 0) {
                 var newActual = changes[id].type === 'income' ? material.balance + qty : material.balance - qty;
-                if (input) input.value = newActual;
+                updateField(id, 'actual', newActual);
+                changes[id].actual = newActual;
+                updateDiffCell(id);
             }
-
-            var input = document.getElementById('qty_' + id);
-            if (input) {
-                if (value && parseFloat(value) > 0) {
-                    input.className = 'balance-input changed';
-                } else {
-                    input.className = 'balance-input';
-                }
-            }
-
-            renderTable();
-            updateStats();
         }
 
-        function updateStats() {
-            document.getElementById('totalMaterials').textContent = materials.length;
+        updateStats();
+    }
 
-            var changedCount = 0;
-            for (var key in changes) {
-                if (changes[key].quantity && parseFloat(changes[key].quantity) > 0) {
-                    changedCount++;
-                }
-            }
-            document.getElementById('changedCount').textContent = changedCount;
+    function onQuantityChange(id, value) {
+        if (!changes[id]) {
+            changes[id] = { type: 'income', quantity: value, actual: 0 };
+        } else {
+            changes[id].quantity = value;
         }
 
-        function saveAllChanges() {
-            var btn = document.getElementById('saveAllBtn');
-            btn.disabled = true;
-            btn.textContent = '⏳ Сохранение...';
+        var material = materials.find(function(m) { return m.id === id; });
+        if (material && value && parseFloat(value) > 0) {
+            var qty = parseFloat(value);
+            var newActual = changes[id].type === 'income' ? material.balance + qty : material.balance - qty;
+            updateField(id, 'actual', newActual);
+            changes[id].actual = newActual;
+            updateDiffCell(id);
+        }
 
-            var date = document.getElementById('balanceDate').value;
-            if (!date) {
-                showToast('❌ Укажите дату', 'error');
-                btn.disabled = false;
-                btn.textContent = '💾 Сохранить все изменения';
-                return;
+        var input = document.getElementById('qty_' + id);
+        if (input) {
+            if (value && parseFloat(value) > 0) {
+                input.className = 'balance-input changed';
+            } else {
+                input.className = 'balance-input';
             }
+        }
 
-            var itemsToSave = [];
-            for (var key in changes) {
-                var change = changes[key];
-                if (change.quantity && parseFloat(change.quantity) > 0) {
-                    itemsToSave.push({
-                        id: key,
-                        type: change.type,
-                        quantity: parseFloat(change.quantity)
-                    });
-                }
+        updateStats();
+    }
+
+    function updateStats() {
+        document.getElementById('totalMaterials').textContent = materials.length;
+
+        var changedCount = 0;
+        for (var key in changes) {
+            if (changes[key].quantity && parseFloat(changes[key].quantity) > 0) {
+                changedCount++;
             }
+        }
+        document.getElementById('changedCount').textContent = changedCount;
+    }
 
-            if (itemsToSave.length === 0) {
-                showToast('⚠️ Нет изменений для сохранения', 'info');
-                btn.disabled = false;
-                btn.textContent = '💾 Сохранить все изменения';
-                return;
-            }
+    function saveAllChanges() {
+        var btn = document.getElementById('saveAllBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Сохранение...';
 
-            var promises = [];
-            for (var i = 0; i < itemsToSave.length; i++) {
-                var item = itemsToSave[i];
-                var promise = supabase.from('movements').insert([{
-                    material_id: item.id,
-                    movement_date: date,
-                    movement_type: item.type === 'income' ? 'INCOME' : 'EXPENSE',
-                    quantity: item.quantity,
-                    source: 'Ручная корректировка остатка',
-                    notes: 'Фактическое количество: ' + (changes[item.id] ? changes[item.id].actual : '')
-                }]).select();
+        var date = document.getElementById('balanceDate').value;
+        if (!date) {
+            showToast('❌ Укажите дату', 'error');
+            btn.disabled = false;
+            btn.textContent = '💾 Сохранить все изменения';
+            return;
+        }
 
-                promises.push(promise);
-            }
-
-            Promise.all(promises)
-                .then(function() {
-                    showToast('✅ Сохранено ' + itemsToSave.length + ' изменений', 'success');
-                    changes = {};
-                    loadBalances();
-                })
-                .catch(function(error) {
-                    console.error('Ошибка:', error);
-                    showToast('❌ Ошибка сохранения: ' + error.message, 'error');
-                })
-                .finally(function() {
-                    btn.disabled = false;
-                    btn.textContent = '💾 Сохранить все изменения';
+        var itemsToSave = [];
+        for (var key in changes) {
+            var change = changes[key];
+            if (change.quantity && parseFloat(change.quantity) > 0) {
+                itemsToSave.push({
+                    id: key,
+                    type: change.type,
+                    quantity: parseFloat(change.quantity)
                 });
-        }
-
-        function resetAll() {
-            if (Object.keys(changes).length === 0) {
-                showToast('⚠️ Нет изменений для сброса', 'info');
-                return;
             }
-
-            if (!confirm('Сбросить все несохраненные изменения?')) return;
-
-            changes = {};
-            renderTable();
-            updateStats();
-            showToast('🔄 Все изменения сброшены', 'info');
         }
 
-        function formatNumber(num) {
-            if (num === undefined || num === null) return '0';
-            if (Number.isInteger(num)) return num.toString();
-            return num.toFixed(3).replace(/\.?0+$/, '');
+        if (itemsToSave.length === 0) {
+            showToast('⚠️ Нет изменений для сохранения', 'info');
+            btn.disabled = false;
+            btn.textContent = '💾 Сохранить все изменения';
+            return;
         }
 
-        function showToast(message, type) {
-            type = type || 'info';
-            var toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast ' + type;
-            setTimeout(function() { toast.classList.add('show'); }, 10);
-            clearTimeout(toast._timeout);
-            toast._timeout = setTimeout(function() { toast.classList.remove('show'); }, 3000);
-        }
-    </script>
+        var promises = [];
+        for (var i = 0; i < itemsToSave.length; i++) {
+            var item = itemsToSave[i];
+            var promise = supabase.from('movements').insert([{
+                material_id: item.id,
+                movement_date: date,
+                movement_type: item.type === 'income' ? 'INCOME' : 'EXPENSE',
+                quantity: item.quantity,
+                source: 'Ручная корректировка остатка',
+                notes: 'Фактическое количество: ' + (changes[item.id] ? changes[item.id].actual : '')
+            }]).select();
 
-</body>
-</html>
+            promises.push(promise);
+        }
+
+        Promise.all(promises)
+            .then(function() {
+                showToast('✅ Сохранено ' + itemsToSave.length + ' изменений', 'success');
+                changes = {};
+                loadBalances();
+            })
+            .catch(function(error) {
+                console.error('Ошибка:', error);
+                showToast('❌ Ошибка сохранения: ' + error.message, 'error');
+            })
+            .finally(function() {
+                btn.disabled = false;
+                btn.textContent = '💾 Сохранить все изменения';
+            });
+    }
+
+    function resetAll() {
+        if (Object.keys(changes).length === 0) {
+            showToast('⚠️ Нет изменений для сброса', 'info');
+            return;
+        }
+
+        if (!confirm('Сбросить все несохраненные изменения?')) return;
+
+        changes = {};
+        renderTable();
+        updateStats();
+        showToast('🔄 Все изменения сброшены', 'info');
+    }
+
+    function formatNumber(num) {
+        if (num === undefined || num === null) return '0';
+        if (Number.isInteger(num)) return num.toString();
+        return num.toFixed(3).replace(/\.?0+$/, '');
+    }
+
+    function showToast(message, type) {
+        type = type || 'info';
+        var toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = 'toast ' + type;
+        setTimeout(function() { toast.classList.add('show'); }, 10);
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(function() { toast.classList.remove('show'); }, 3000);
+    }
+</script>
