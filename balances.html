@@ -29,7 +29,7 @@
         }
 
         .container {
-            max-width: 1300px;
+            max-width: 1400px;
             width: 100%;
             background: #ffffff;
             border-radius: 16px;
@@ -478,8 +478,8 @@
         </header>
 
         <!-- ===== ЗАГОЛОВОК ===== -->
-        <h1 class="page-title">✏️ Корректировка остатков</h1>
-        <p class="page-subtitle">Введите фактическое количество — программа сама рассчитает приход или расход</p>
+        <h1 class="page-title">✏️ Ручной приход / расход</h1>
+        <p class="page-subtitle">Введите фактическое количество или укажите приход/расход вручную</p>
 
         <!-- ===== СТАТИСТИКА ===== -->
         <div class="stats-row">
@@ -515,12 +515,14 @@
                             <th style="min-width:110px;">Текущий остаток</th>
                             <th style="min-width:140px;">Фактическое</th>
                             <th style="min-width:80px;">Разница</th>
+                            <th style="min-width:100px;">Тип</th>
+                            <th style="min-width:100px;">Количество</th>
                             <th style="width:60px;"></th>
                         </tr>
                     </thead>
                     <tbody id="balancesBody">
                         <tr>
-                            <td colspan="7" style="text-align:center;padding:40px;color:#888;">
+                            <td colspan="9" style="text-align:center;padding:40px;color:#888;">
                                 ⏳ Загрузка данных...
                             </td>
                         </tr>
@@ -591,7 +593,7 @@
 
         function loadBalances() {
             var tbody = document.getElementById('balancesBody');
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#888;">⏳ Загрузка...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#888;">⏳ Загрузка...</td></tr>';
 
             changes = {};
 
@@ -625,7 +627,7 @@
                 .catch(function(error) {
                     console.error('Ошибка:', error);
                     tbody.innerHTML =
-                        '<tr><td colspan="7" style="text-align:center;padding:40px;color:#e53935;">❌ Ошибка загрузки</td></tr>';
+                        '<tr><td colspan="9" style="text-align:center;padding:40px;color:#e53935;">❌ Ошибка загрузки</td></tr>';
                     showToast('❌ Ошибка загрузки: ' + error.message, 'error');
                 });
         }
@@ -648,7 +650,7 @@
 
             if (filteredMaterials.length === 0) {
                 tbody.innerHTML =
-                    '<tr><td colspan="7" style="text-align:center;padding:40px;color:#888;">🔍 Ничего не найдено</td></tr>';
+                    '<tr><td colspan="9" style="text-align:center;padding:40px;color:#888;">🔍 Ничего не найдено</td></tr>';
                 return;
             }
 
@@ -657,10 +659,15 @@
                 var m = filteredMaterials[i];
                 var balance = m.balance || 0;
                 var isChanged = changes[m.id] !== undefined;
-                var actual = isChanged ? changes[m.id] : balance;
+
+                var changeData = changes[m.id] || { type: 'income', quantity: '', actual: balance };
+
+                var actual = isChanged ? changeData.actual : balance;
+
                 var diff = actual - balance;
                 var diffClass = diff > 0 ? 'positive' : diff < 0 ? 'negative' : 'zero';
                 var diffText = diff > 0 ? '+' + diff : diff;
+
                 var categoryClass = (m.category || '').toLowerCase();
 
                 html += '<tr>' +
@@ -681,6 +688,24 @@
                     '<td><span class="badge-diff ' + diffClass + '" id="diff_' + m.id + '">' + diffText +
                     '</span></td>' +
                     '<td>' +
+                    '<select class="type-select" id="type_' + m.id + '" ' +
+                    'onchange="onTypeChange(\'' + m.id + '\', this.value)" ' +
+                    (isChanged ? '' : 'disabled') + '>' +
+                    '<option value="income" ' + (changeData.type === 'income' ? 'selected' : '') + '>➕ Приход</option>' +
+                    '<option value="expense" ' + (changeData.type === 'expense' ? 'selected' : '') + '>➖ Расход</option>' +
+                    '</select>' +
+                    '</td>' +
+                    '<td>' +
+                    '<input type="number" class="balance-input ' + (isChanged ? 'changed' : '') +
+                    '" id="qty_' + m.id + '" ' +
+                    'min="0" step="0.001" ' +
+                    'value="' + (changeData.quantity || '') + '" ' +
+                    'oninput="onQuantityChange(\'' + m.id + '\', this.value)" ' +
+                    'onfocus="this.select()" ' +
+                    (isChanged ? '' : 'disabled') +
+                    ' placeholder="0">' +
+                    '</td>' +
+                    '<td>' +
                     (isChanged ? '<span style="color:#ff9800;font-weight:500;">✏️</span>' : '') +
                     '</td>' +
                     '</tr>';
@@ -699,14 +724,51 @@
 
             var currentBalance = material.balance || 0;
 
-            if (numValue === currentBalance) {
-                delete changes[id];
-            } else {
-                changes[id] = numValue;
+            if (!changes[id]) {
+                changes[id] = { type: 'income', quantity: '', actual: currentBalance };
             }
 
-            // Обновляем только эту строку
+            changes[id].actual = numValue;
+
+            var diff = numValue - currentBalance;
+
+            if (diff !== 0) {
+                changes[id].quantity = Math.abs(diff);
+                changes[id].type = diff > 0 ? 'income' : 'expense';
+            } else {
+                changes[id].quantity = '';
+                changes[id].type = 'income';
+            }
+
             updateRow(id);
+            updateStats();
+        }
+
+        function onTypeChange(id, value) {
+            if (!changes[id]) return;
+            changes[id].type = value;
+
+            var material = materials.find(function(m) { return m.id === id; });
+            if (material && changes[id].quantity) {
+                var qty = parseFloat(changes[id].quantity) || 0;
+                if (qty > 0) {
+                    changes[id].actual = changes[id].type === 'income' ? material.balance + qty : material.balance - qty;
+                    updateRow(id);
+                }
+            }
+            updateStats();
+        }
+
+        function onQuantityChange(id, value) {
+            if (!changes[id]) return;
+            changes[id].quantity = value;
+
+            var material = materials.find(function(m) { return m.id === id; });
+            if (material && value && parseFloat(value) > 0) {
+                var qty = parseFloat(value);
+                changes[id].actual = changes[id].type === 'income' ? material.balance + qty : material.balance - qty;
+                updateRow(id);
+            }
             updateStats();
         }
 
@@ -716,12 +778,14 @@
 
             var balance = material.balance || 0;
             var isChanged = changes[id] !== undefined;
-            var actual = isChanged ? changes[id] : balance;
+            var changeData = changes[id] || { type: 'income', quantity: '', actual: balance };
+
+            var actual = isChanged ? changeData.actual : balance;
             var diff = actual - balance;
             var diffClass = diff > 0 ? 'positive' : diff < 0 ? 'negative' : 'zero';
             var diffText = diff > 0 ? '+' + diff : diff;
 
-            // Обновляем поле ввода
+            // Обновляем поле "Фактическое"
             var input = document.getElementById('actual_' + id);
             if (input) {
                 input.value = formatNumber(actual);
@@ -735,7 +799,22 @@
                 diffEl.textContent = diffText;
             }
 
-            // Обновляем статус изменения
+            // Обновляем тип
+            var typeEl = document.getElementById('type_' + id);
+            if (typeEl) {
+                typeEl.value = changeData.type;
+                typeEl.disabled = !isChanged;
+            }
+
+            // Обновляем количество
+            var qtyEl = document.getElementById('qty_' + id);
+            if (qtyEl) {
+                qtyEl.value = changeData.quantity || '';
+                qtyEl.disabled = !isChanged;
+                qtyEl.className = 'balance-input' + (isChanged ? ' changed' : '');
+            }
+
+            // Обновляем статус
             var statusCell = document.querySelector('#actual_' + id).closest('tr').querySelector('td:last-child');
             if (statusCell) {
                 statusCell.innerHTML = isChanged ? '<span style="color:#ff9800;font-weight:500;">✏️</span>' : '';
@@ -749,7 +828,7 @@
             for (var key in changes) {
                 var material = materials.find(function(m) { return m.id === key; });
                 if (material) {
-                    var diff = changes[key] - material.balance;
+                    var diff = changes[key].actual - material.balance;
                     if (diff !== 0) {
                         changedCount++;
                     }
@@ -773,18 +852,12 @@
 
             var itemsToSave = [];
             for (var key in changes) {
-                var material = materials.find(function(m) { return m.id === key; });
-                if (!material) continue;
-
-                var currentBalance = material.balance || 0;
-                var actual = changes[key];
-                var diff = actual - currentBalance;
-
-                if (diff !== 0) {
+                var change = changes[key];
+                if (change.quantity && parseFloat(change.quantity) > 0) {
                     itemsToSave.push({
                         id: key,
-                        type: diff > 0 ? 'income' : 'expense',
-                        quantity: Math.abs(diff)
+                        type: change.type,
+                        quantity: parseFloat(change.quantity)
                     });
                 }
             }
@@ -805,7 +878,7 @@
                     movement_type: item.type === 'income' ? 'INCOME' : 'EXPENSE',
                     quantity: item.quantity,
                     source: 'Ручная корректировка остатка',
-                    notes: 'Фактическое количество: ' + changes[item.id]
+                    notes: 'Фактическое количество: ' + (changes[item.id] ? changes[item.id].actual : '')
                 }]).select();
 
                 promises.push(promise);
