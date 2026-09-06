@@ -10,7 +10,7 @@
 
     <style>
         /* ============================================
-           APPLE STYLE
+           APPLE STYLE — но с нормальными чекбоксами
            ============================================ */
         * {
             margin: 0;
@@ -37,7 +37,6 @@
             box-shadow: 0 12px 48px rgba(0, 0, 0, 0.06);
         }
 
-        /* ===== ХЕДЕР С МЕНЮ ===== */
         .header {
             display: flex;
             justify-content: space-between;
@@ -111,7 +110,6 @@
             background: #ff3b30;
         }
 
-        /* ===== ЗАГОЛОВОК ===== */
         .page-title {
             font-size: 26px;
             font-weight: 700;
@@ -124,7 +122,6 @@
             margin-bottom: 22px;
         }
 
-        /* ===== СЕКЦИИ ===== */
         .section {
             background: #f8f8fa;
             border-radius: 16px;
@@ -190,7 +187,7 @@
             padding-right: 36px;
         }
 
-        /* ===== ФОРМАТЫ (ЧЕКБОКСЫ) ===== */
+        /* ===== ФОРМАТЫ (НОРМАЛЬНЫЕ ЧЕКБОКСЫ) ===== */
         .format-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -200,19 +197,18 @@
         .format-item {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             background: #ffffff;
-            padding: 4px 8px 4px 6px;
+            padding: 4px 10px 4px 6px;
             border-radius: 10px;
             border: 1.5px solid #e5e5ea;
-            cursor: pointer;
             transition: all 0.2s;
         }
         .format-item:hover {
             border-color: #007aff;
             background: #f5f9ff;
         }
-        .format-item.active {
+        .format-item.checked {
             border-color: #007aff;
             background: #e8f0fe;
         }
@@ -249,7 +245,7 @@
             min-width: 18px;
         }
 
-        /* ===== ЧЕКБОКСЫ ===== */
+        /* ===== УПАКОВКА (ОБЫЧНЫЕ ЧЕКБОКСЫ) ===== */
         .checkbox-group {
             display: flex;
             flex-wrap: wrap;
@@ -279,6 +275,9 @@
             cursor: pointer;
             flex-shrink: 0;
         }
+        .checkbox-item input[type="checkbox"]:checked + label {
+            color: #007aff;
+        }
 
         .badge {
             font-size: 10px;
@@ -297,7 +296,6 @@
             background: #ff9500;
         }
 
-        /* ===== СПЕЦИАЛЬНЫЕ ===== */
         .special-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -341,7 +339,6 @@
             color: #86868b;
         }
 
-        /* ===== КОРОБКИ ===== */
         .boxes-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -413,7 +410,6 @@
             background: #f5f9ff;
         }
 
-        /* ===== ПРЕДПРОСМОТР ===== */
         .calc-preview {
             background: #f8f8fa;
             border-radius: 16px;
@@ -468,7 +464,6 @@
             border-top: 1px solid #e5e5ea;
         }
 
-        /* ===== КНОПКИ ===== */
         .actions {
             display: flex;
             gap: 10px;
@@ -513,7 +508,6 @@
             box-shadow: none;
         }
 
-        /* ===== TOAST ===== */
         .toast {
             position: fixed;
             bottom: 30px;
@@ -609,7 +603,6 @@
 
     <div class="container">
 
-        <!-- ===== ХЕДЕР С МЕНЮ ===== -->
         <header class="header">
             <div class="logo">📦 <span>Учет материалов</span></div>
             <nav class="nav">
@@ -624,11 +617,9 @@
             </div>
         </header>
 
-        <!-- ===== ЗАГОЛОВОК ===== -->
         <h1 class="page-title">📦 Отгрузка заказа</h1>
         <p class="page-subtitle">Заполните данные и нажмите «Отгрузить»</p>
 
-        <!-- ===== ФОРМА ===== -->
         <form id="orderForm">
 
             <!-- НОМЕР И ДАТА -->
@@ -637,7 +628,7 @@
                 <div class="row">
                     <div class="form-group">
                         <label>Номер заказа <span class="required">*</span></label>
-                        <input type="text" id="orderNumber" placeholder="ORD-2026-09-03" />
+                        <input type="text" id="orderNumber" placeholder="ORD-2026-09-06" />
                     </div>
                     <div class="form-group">
                         <label>Дата</label>
@@ -646,11 +637,11 @@
                 </div>
             </div>
 
-            <!-- ===== ФОРМАТЫ ===== -->
+            <!-- ===== ФОРМАТЫ (НОРМАЛЬНЫЕ ЧЕКБОКСЫ) ===== -->
             <div class="section">
                 <div class="section-title">Форматы (можно выбрать несколько)</div>
                 <div class="format-grid" id="formatGrid">
-                    <div class="format-item active" data-code="A6_BAG">
+                    <div class="format-item checked" data-code="A6_BAG">
                         <input type="checkbox" checked />
                         <label>А6</label>
                         <input type="number" class="format-qty" min="0" step="1" value="0" />
@@ -826,7 +817,6 @@
                 </div>
             </div>
 
-            <!-- ===== КНОПКИ ===== -->
             <div class="actions">
                 <button type="button" class="btn btn-secondary" onclick="resetForm()">❌ Очистить</button>
                 <button type="submit" class="btn btn-success" id="submitBtn">✅ Отгрузить</button>
@@ -836,12 +826,8 @@
 
     </div>
 
-    <!-- ===== TOAST ===== -->
     <div class="toast" id="toast"></div>
 
-    <!-- ========================================== -->
-    <!-- СКРИПТЫ -->
-    <!-- ========================================== -->
     <script>
         // ============================================
         // НАСТРОЙКА SUPABASE
@@ -881,14 +867,13 @@
         // ИНИЦИАЛИЗАЦИЯ
         // ============================================
         document.addEventListener('DOMContentLoaded', function() {
-            // Автоматическая дата
             var today = new Date();
             var day = String(today.getDate()).padStart(2, '0');
             var month = String(today.getMonth() + 1).padStart(2, '0');
             var year = today.getFullYear();
             document.getElementById('orderDate').value = year + '-' + month + '-' + day;
 
-            // ===== ФОРМАТЫ =====
+            // ===== ФОРМАТЫ (НЕЗАВИСИМЫЕ ЧЕКБОКСЫ) =====
             var formatItems = document.querySelectorAll('.format-item');
             for (var i = 0; i < formatItems.length; i++) {
                 (function(item) {
@@ -897,11 +882,11 @@
 
                     checkbox.addEventListener('change', function() {
                         if (this.checked) {
-                            item.classList.add('active');
+                            item.classList.add('checked');
                             qtyInput.disabled = false;
-                            qtyInput.value = 1;
+                            if (qtyInput.value == 0) qtyInput.value = 1;
                         } else {
-                            item.classList.remove('active');
+                            item.classList.remove('checked');
                             qtyInput.disabled = true;
                             qtyInput.value = 0;
                         }
@@ -960,9 +945,6 @@
             updatePreview();
         });
 
-        // ============================================
-        // ПРОВЕРКА ПОДКЛЮЧЕНИЯ
-        // ============================================
         function checkConnection() {
             var statusEl = document.getElementById('connectionStatus');
             var bar = document.getElementById('statusBar');
@@ -980,9 +962,6 @@
                 });
         }
 
-        // ============================================
-        // ДОБАВЛЕНИЕ КОРОБКИ
-        // ============================================
         function addBoxRow() {
             boxRowCount++;
             var grid = document.getElementById('boxesGrid');
@@ -1022,11 +1001,7 @@
             }
         }
 
-        // ============================================
-        // РАСЧЕТ
-        // ============================================
         function calculate() {
-            // Собираем выбранные форматы
             var formats = [];
             var formatItems = document.querySelectorAll('.format-item');
             for (var i = 0; i < formatItems.length; i++) {
@@ -1050,17 +1025,14 @@
             var hasASTP = document.getElementById('hasASTP').checked;
             var astpQty = parseInt(document.getElementById('astpQuantity').value) || 0;
 
-            // Общее количество для расчета скоб и картона
             var totalQty = 0;
             for (var j = 0; j < formats.length; j++) {
                 totalQty += formats[j].quantity;
             }
 
-            // Скобы
             var capsTotal = (hasCaps ? totalQty : 0) + (hasOtherPack ? totalQty : 0);
             var staples = capsTotal * 2;
 
-            // Картон
             var cardboard = 0;
             if (hasCardboard && formats.length > 0) {
                 for (var k = 0; k < formats.length; k++) {
@@ -1073,7 +1045,6 @@
                 cardboard = Math.round(cardboard * 1000) / 1000;
             }
 
-            // Коробки
             var boxes = [];
             var hasBoxes = document.getElementById('hasBoxes').checked;
             if (hasBoxes) {
@@ -1110,13 +1081,9 @@
             return result;
         }
 
-        // ============================================
-        // ОБНОВЛЕНИЕ ПРЕДПРОСМОТРА
-        // ============================================
         function updatePreview() {
             var calc = calculate();
 
-            // Пакеты
             var packagesContainer = document.getElementById('previewPackages');
             if (calc.formats.length === 0) {
                 packagesContainer.innerHTML =
@@ -1156,123 +1123,122 @@
         }
 
         // ============================================
-        // ОТПРАВКА ЗАКАЗА С ПОЛНЫМ СБРОСОМ
+        // ОТПРАВКА ЗАКАЗА С ПОЛНЫМ ОБНОВЛЕНИЕМ
         // ============================================
         function submitOrder(event) {
-    event.preventDefault();
+            event.preventDefault();
 
-    var submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = '⏳ Отправка...';
+            var submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Отправка...';
 
-    try {
-        var calc = calculate();
+            try {
+                var calc = calculate();
 
-        if (calc.formats.length === 0 && calc.boxes.length === 0) {
-            showToast('❌ Выберите хотя бы один формат или коробку', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = '✅ Отгрузить';
-            return;
-        }
+                if (calc.formats.length === 0 && calc.boxes.length === 0) {
+                    showToast('❌ Выберите хотя бы один формат или коробку', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ Отгрузить';
+                    return;
+                }
 
-        var boxes = [];
-        for (var i = 0; i < calc.boxes.length; i++) {
-            boxes.push({ type: calc.boxes[i].code, quantity: calc.boxes[i].quantity });
-        }
+                var boxes = [];
+                for (var i = 0; i < calc.boxes.length; i++) {
+                    boxes.push({ type: calc.boxes[i].code, quantity: calc.boxes[i].quantity });
+                }
 
-        var formatsData = [];
-        for (var j = 0; j < calc.formats.length; j++) {
-            formatsData.push({
-                name: calc.formats[j].name,
-                code: calc.formats[j].code,
-                quantity: calc.formats[j].quantity
-            });
-        }
+                var formatsData = [];
+                for (var j = 0; j < calc.formats.length; j++) {
+                    formatsData.push({
+                        name: calc.formats[j].name,
+                        code: calc.formats[j].code,
+                        quantity: calc.formats[j].quantity
+                    });
+                }
 
-        var orderData = {
-            order_number: document.getElementById('orderNumber').value.trim(),
-    order_date: document.getElementById('orderDate').value,
-    material_type: null,           // ← NULL
-    material_quantity: 0,          // ← 0
-    formats: formatsData,
-    has_caps: document.getElementById('hasCaps').checked,
-    has_non_formal: false,
-    has_other_pack: false,
-    has_cardboard: document.getElementById('hasCardboard').checked,
-    has_astp: document.getElementById('hasASTP').checked,
-    astp_quantity: parseInt(document.getElementById('astpQuantity').value) || 0,
-    has_quant: document.getElementById('hasQuant').checked,
-    quant_quantity: parseInt(document.getElementById('quantQuantity').value) || 0,
-    has_boxes: document.getElementById('hasBoxes').checked,
-    boxes: boxes,
-    calculation: calc
-        };
+                var orderData = {
+                    order_number: document.getElementById('orderNumber').value.trim(),
+                    order_date: document.getElementById('orderDate').value,
+                    material_type: null,
+                    material_quantity: 0,
+                    formats: formatsData,
+                    has_caps: document.getElementById('hasCaps').checked,
+                    has_non_formal: false,
+                    has_other_pack: document.getElementById('hasOtherPack').checked,
+                    has_cardboard: document.getElementById('hasCardboard').checked,
+                    has_astp: document.getElementById('hasASTP').checked,
+                    astp_quantity: parseInt(document.getElementById('astpQuantity').value) || 0,
+                    has_quant: document.getElementById('hasQuant').checked,
+                    quant_quantity: parseInt(document.getElementById('quantQuantity').value) || 0,
+                    has_boxes: document.getElementById('hasBoxes').checked,
+                    boxes: boxes,
+                    calculation: calc
+                };
 
-        if (!orderData.order_number) {
-            showToast('❌ Введите номер заказа', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = '✅ Отгрузить';
-            return;
-        }
+                if (!orderData.order_number) {
+                    showToast('❌ Введите номер заказа', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '✅ Отгрузить';
+                    return;
+                }
 
-        console.log('📦 Отправка заказа:', orderData);
+                console.log('📦 Отправка заказа:', orderData);
 
-        supabase.from('orders').insert([orderData]).select()
-            .then(function(result) {
-                if (result.error) throw result.error;
-                showToast('✅ Заказ ' + orderData.order_number + ' успешно отгружен!', 'success');
-                console.log('✅ Заказ сохранен:', result.data);
+                supabase.from('orders').insert([orderData]).select()
+                    .then(function(result) {
+                        if (result.error) throw result.error;
+                        showToast('✅ Заказ ' + orderData.order_number + ' успешно отгружен!', 'success');
+                        console.log('✅ Заказ сохранен:', result.data);
 
-                setTimeout(function() {
-                    resetForm();
-                    updatePreview();
-                    showToast('🔄 Форма очищена, готово к следующему заказу', 'info');
-                }, 1200);
+                        // ============================================
+                        // ПОЛНАЯ ПЕРЕЗАГРУЗКА СТРАНИЦЫ
+                        // ============================================
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
 
-            })
-            .catch(function(error) {
+                    })
+                    .catch(function(error) {
+                        console.error('❌ Ошибка:', error);
+                        showToast('❌ Ошибка: ' + error.message, 'error');
+                    })
+                    .finally(function() {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '✅ Отгрузить';
+                    });
+
+            } catch (error) {
                 console.error('❌ Ошибка:', error);
                 showToast('❌ Ошибка: ' + error.message, 'error');
-            })
-            .finally(function() {
                 submitBtn.disabled = false;
                 submitBtn.textContent = '✅ Отгрузить';
-            });
-
-    } catch (error) {
-        console.error('❌ Ошибка:', error);
-        showToast('❌ Ошибка: ' + error.message, 'error');
-        submitBtn.disabled = false;
-        submitBtn.textContent = '✅ Отгрузить';
-    }
-}
+            }
+        }
 
         // ============================================
-        // ПОЛНЫЙ СБРОС ФОРМЫ (ВКЛЮЧАЯ ГАЛОЧКИ)
+        // СБРОС ФОРМЫ
         // ============================================
         function resetForm() {
             document.getElementById('orderNumber').value = '';
-            document.getElementById('materialQuantity').value = 1;
+            document.getElementById('materialQuantity') && (document.getElementById('materialQuantity').value = 1);
 
-            // Сброс форматов (А6 остается активным, остальные снимаются)
             var formatItems = document.querySelectorAll('.format-item');
             for (var i = 0; i < formatItems.length; i++) {
                 var checkbox = formatItems[i].querySelector('input[type="checkbox"]');
                 var qtyInput = formatItems[i].querySelector('.format-qty');
                 if (formatItems[i].getAttribute('data-code') === 'A6_BAG') {
                     checkbox.checked = true;
-                    formatItems[i].classList.add('active');
+                    formatItems[i].classList.add('checked');
                     qtyInput.disabled = false;
                     qtyInput.value = 0;
                 } else {
                     checkbox.checked = false;
-                    formatItems[i].classList.remove('active');
+                    formatItems[i].classList.remove('checked');
                     qtyInput.disabled = true;
                     qtyInput.value = 0;
                 }
             }
 
-            // СБРАСЫВАЕМ ВСЕ ГАЛОЧКИ
             document.getElementById('hasCaps').checked = false;
             document.getElementById('hasOtherPack').checked = false;
             document.getElementById('hasCardboard').checked = false;
@@ -1280,14 +1246,12 @@
             document.getElementById('hasQuant').checked = false;
             document.getElementById('hasBoxes').checked = false;
 
-            // Сбрасываем количество в специальных полях
             document.getElementById('astpQuantity').value = 0;
             document.getElementById('astpQuantity').disabled = true;
             document.getElementById('quantQuantity').value = 0;
             document.getElementById('quantQuantity').disabled = true;
             document.getElementById('boxesSection').style.display = 'none';
 
-            // Сбрасываем коробки
             for (var j = 1; j <= 2; j++) {
                 var qtyEl = document.getElementById('boxQty' + j);
                 if (qtyEl) qtyEl.value = 0;
@@ -1299,7 +1263,7 @@
             boxRowCount = 2;
 
             updatePreview();
-            showToast('🔄 Форма полностью очищена', 'info');
+            showToast('🔄 Форма очищена', 'info');
         }
 
         function showToast(message, type) {
