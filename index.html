@@ -648,7 +648,7 @@
                 <div class="format-grid" id="formatGrid">
 
                     <!-- ===== ХОДОВЫЕ ФОРМАТЫ (первые) ===== -->
-                    <div class="format-item hot" data-code="RSM" data-cardboard="A6">
+                    <div class="format-item hot" data-code="RSM" data-package="A6" data-cardboard="auto">
                         <input type="checkbox" />
                         <label>RSM</label>
                         <input type="number" class="format-qty" min="0" step="1" value="0" disabled
@@ -656,7 +656,7 @@
                                onblur="if(this.value=='') this.value=0;" />
                         <span class="unit">шт</span>
                     </div>
-                    <div class="format-item hot" data-code="KSM" data-cardboard="A6">
+                    <div class="format-item hot" data-code="KSM" data-package="A6" data-cardboard="auto">
                         <input type="checkbox" />
                         <label>KSM</label>
                         <input type="number" class="format-qty" min="0" step="1" value="0" disabled
@@ -664,7 +664,7 @@
                                onblur="if(this.value=='') this.value=0;" />
                         <span class="unit">шт</span>
                     </div>
-                    <div class="format-item hot" data-code="RSTP" data-cardboard="none">
+                    <div class="format-item hot" data-code="RSTP" data-package="A6" data-cardboard="none">
                         <input type="checkbox" />
                         <label>RSTP</label>
                         <input type="number" class="format-qty" min="0" step="1" value="0" disabled
@@ -674,7 +674,7 @@
                     </div>
 
                     <!-- ===== СТАНДАРТНЫЕ ФОРМАТЫ ===== -->
-                    <div class="format-item checked" data-code="A6_BAG" data-cardboard="A6">
+                    <div class="format-item checked" data-code="A6_BAG" data-package="A6" data-cardboard="check">
                         <input type="checkbox" checked />
                         <label>А6</label>
                         <input type="number" class="format-qty" min="0" step="1" value="0"
@@ -682,7 +682,7 @@
                                onblur="if(this.value=='') this.value=0;" />
                         <span class="unit">шт</span>
                     </div>
-                    <div class="format-item" data-code="A5_BAG" data-cardboard="A5">
+                    <div class="format-item" data-code="A5_BAG" data-package="A5" data-cardboard="check">
                         <input type="checkbox" />
                         <label>А5</label>
                         <input type="number" class="format-qty" min="0" step="1" value="0" disabled
@@ -690,7 +690,7 @@
                                onblur="if(this.value=='') this.value=0;" />
                         <span class="unit">шт</span>
                     </div>
-                    <div class="format-item" data-code="A7_KFC" data-cardboard="A7">
+                    <div class="format-item" data-code="A7_KFC" data-package="A7" data-cardboard="check">
                         <input type="checkbox" />
                         <label>А7 KFC</label>
                         <input type="number" class="format-qty" min="0" step="1" value="0" disabled
@@ -698,7 +698,7 @@
                                onblur="if(this.value=='') this.value=0;" />
                         <span class="unit">шт</span>
                     </div>
-                    <div class="format-item" data-code="BAG_60x40x30" data-cardboard="A6">
+                    <div class="format-item" data-code="BAG_60x40x30" data-package="A6" data-cardboard="check">
                         <input type="checkbox" />
                         <label>60×40×30</label>
                         <input type="number" class="format-qty" min="0" step="1" value="0" disabled
@@ -706,7 +706,7 @@
                                onblur="if(this.value=='') this.value=0;" />
                         <span class="unit">шт</span>
                     </div>
-                    <div class="format-item" data-code="BAG_70x100" data-cardboard="A6">
+                    <div class="format-item" data-code="BAG_70x100" data-package="A6" data-cardboard="check">
                         <input type="checkbox" />
                         <label>70×100</label>
                         <input type="number" class="format-qty" min="0" step="1" value="0" disabled
@@ -714,7 +714,7 @@
                                onblur="if(this.value=='') this.value=0;" />
                         <span class="unit">шт</span>
                     </div>
-                    <div class="format-item" data-code="BAG_60x80" data-cardboard="A6">
+                    <div class="format-item" data-code="BAG_60x80" data-package="A6" data-cardboard="check">
                         <input type="checkbox" />
                         <label>60×80</label>
                         <input type="number" class="format-qty" min="0" step="1" value="0" disabled
@@ -741,7 +741,7 @@
                     </label>
                     <label class="checkbox-item">
                         <input type="checkbox" id="hasCardboard" />
-                        Картон
+                        Картон (для обычных форматов)
                         <span class="badge badge-green">A6/24 · A5/12 · A7/48</span>
                     </label>
                 </div>
@@ -906,9 +906,9 @@
             'BAG_60x40x30': 'Пакет 60×40×30',
             'BAG_70x100': 'Пакет 70×100',
             'BAG_60x80': 'Пакет 60×80',
-            'RSM': 'RSM',
-            'KSM': 'KSM',
-            'RSTP': 'RSTP'
+            'RSM': 'RSM (пакет А6)',
+            'KSM': 'KSM (пакет А6)',
+            'RSTP': 'RSTP (пакет А6)'
         };
 
         var BOX_NAMES = {
@@ -1086,7 +1086,12 @@
                     var name = formatItems[i].querySelector('label').textContent.trim();
                     var cardboardType = formatItems[i].getAttribute('data-cardboard');
                     if (qty > 0) {
-                        formats.push({ code: code, name: name, quantity: qty, cardboard: cardboardType });
+                        formats.push({
+                            code: code,
+                            name: name,
+                            quantity: qty,
+                            cardboard: cardboardType
+                        });
                     }
                 }
             }
@@ -1109,7 +1114,7 @@
 
             // ===== КАРТОН =====
             var cardboard = 0;
-            if (hasCardboard && formats.length > 0) {
+            if (formats.length > 0) {
                 for (var k = 0; k < formats.length; k++) {
                     var f = formats[k];
 
@@ -1118,20 +1123,24 @@
                         continue;
                     }
 
-                    // RSM, KSM, A6 — считаем как А6 (÷24)
-                    if (f.cardboard === 'A6' || f.code === 'RSM' || f.code === 'KSM' || f.code === 'A6_BAG') {
+                    // RSM, KSM — картон АВТОМАТИЧЕСКИ (как А6, ÷24)
+                    if (f.cardboard === 'auto' || f.code === 'RSM' || f.code === 'KSM') {
                         cardboard += f.quantity / 24;
+                        continue;
                     }
-                    // А5 — ÷12
-                    else if (f.code === 'A5_BAG') {
+
+                    // Для остальных — нужен чекбокс "Картон"
+                    if (!hasCardboard) {
+                        continue;
+                    }
+
+                    if (f.code === 'A6_BAG' || f.code === 'BAG_60x40x30' || f.code === 'BAG_70x100' || f.code === 'BAG_60x80') {
+                        cardboard += f.quantity / 24;
+                    } else if (f.code === 'A5_BAG') {
                         cardboard += f.quantity / 12;
-                    }
-                    // А7 — ÷48
-                    else if (f.code === 'A7_KFC') {
+                    } else if (f.code === 'A7_KFC') {
                         cardboard += f.quantity / 48;
-                    }
-                    // Остальные — ÷24
-                    else {
+                    } else {
                         cardboard += f.quantity / 24;
                     }
                 }
